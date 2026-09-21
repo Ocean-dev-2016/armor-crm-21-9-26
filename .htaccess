@@ -1,0 +1,37 @@
+RewriteEngine On
+
+RewriteBase /armor/
+
+# Login
+RewriteRule ^login/?$ login.php [L,QSA]
+
+# Logout
+RewriteRule ^logout/?$ logout.php [L,QSA]
+
+# master route
+
+RewriteRule ^country/?$ admin/submaster/country/list.php [L]
+RewriteRule ^state/?$ admin/submaster/state/list.php [L]
+RewriteRule ^city/?$ admin/submaster/city/list.php [L]
+
+# Module list
+RewriteRule ^module/?$ admin/setting/module/list.php [L]
+
+RewriteRule ^plan/?$ admin/setting/plan/list.php [L]
+RewriteRule ^plan/add/?$ admin/setting/plan/form.php [L]
+RewriteRule ^plan/edit/([^/]+)/?$ admin/setting/plan/form.php?id=$1 [L]
+
+RewriteRule ^company/?$ admin/setting/company/list.php [L]
+RewriteRule ^company/add/?$ admin/setting/company/form.php [L]
+RewriteRule ^company/edit/([^/]+)/?$ admin/setting/company/form.php?id=$1 [L]
+
+RewriteRule ^teamrole/?$ admin/setting/teamrole/list.php [L]
+RewriteRule ^teamrole/setting/([^/]+)/?$ admin/setting/teamrole/setting.php?id=$1 [L]
+
+RewriteRule ^team-person/?$ admin/setting/team-person/list.php [L]
+RewriteRule ^team-person/add/?$ admin/setting/team-person/form.php [L]
+RewriteRule ^team-person/edit/([^/]+)/?$ admin/setting/team-person/form.php?id=$1 [L]
+
+RewriteCond %{REQUEST_FILENAME} -f [OR]
+RewriteCond %{REQUEST_FILENAME} -d
+RewriteRule ^ - [L]

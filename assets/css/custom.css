@@ -1,0 +1,176 @@
+/* Table width */
+.data-table {
+    width: 100% !important;
+    table-layout: fixed;
+}
+
+/* First column - Sr No. */
+.data-table th:first-child,
+.data-table td:first-child {
+    width: 70px !important;
+    text-align: center;
+    white-space: nowrap;
+}
+
+/* Last column - Action */
+.data-table th:last-child,
+.data-table td:last-child {
+    width: 80px !important;
+    text-align: center;
+    white-space: nowrap;
+}
+
+/* All middle columns */
+.data-table th:not(:first-child):not(:last-child),
+.data-table td:not(:first-child):not(:last-child) {
+    width: 150px !important;
+}
+
+/* Text wrapping */
+.data-table td {
+    white-space: normal !important;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+}
+
+.toast-body {
+    font-size: 18px;
+    color: #000
+}
+
+.page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 15px;
+}
+
+.page-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.page-actions .btn {
+    white-space: nowrap;
+}
+
+/* Tablet */
+@media (max-width: 768px) {
+
+    .page-header {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .page-actions {
+        width: 100%;
+    }
+
+}
+
+/* Mobile */
+@media (max-width: 576px) {
+
+    .page-actions {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        width: 100%;
+        gap: 8px;
+    }
+
+    .page-actions .btn {
+        width: 100%;
+        justify-content: center;
+    }
+
+}
+
+.kanban-todo .module-card {
+    width: fit-content;
+    max-width: 100%;
+}
+
+.kanban-todo .module-card .card-body {
+    white-space: nowrap;
+}
+
+.setting_dropdown {
+    width: auto !important;
+}
+
+#mobileMenu {
+    width: 300px;
+}
+
+#mobileMenu .list-group-item {
+    border-left: 0;
+    border-right: 0;
+}
+
+#mobileMenu .list-group-item-action:hover {
+    background-color: rgba(var(--bs-primary-rgb), 0.08);
+}
+
+#mobileMenu .ps-5 {
+    padding-left: 3rem !important;
+}
+
+#mobileMenu .ps-6 {
+    padding-left: 4.5rem !important;
+}
+
+.logo {
+    height: 50px;
+    width: auto;
+    object-fit: cover;
+}
+
+.mb-3:has(.ts-wrapper) {
+    display: flex;
+    flex-wrap: wrap;
+}
+
+.mb-3:has(.ts-wrapper) label.form-label {
+    width: 100%;
+    order: 1;
+}
+
+.mb-3:has(.ts-wrapper) .ts-wrapper {
+    width: 100%;
+    order: 2;
+}
+
+.mb-3:has(.ts-wrapper) span.text-danger {
+    width: 100%;
+    order: 3;
+    display: block;
+}
+
+/* Keep input box text color default when validation error is shown */
+.form-control.text-danger,
+.form-control.error,
+.form-control.is-invalid,
+.form-select.text-danger,
+.form-select.error,
+.form-select.is-invalid {
+    color: var(--bs-body-color) !important;
+}
+
+.breadcrumb-body {
+    padding: 4px 10px !important;
+}
+
+.page-actions a {
+    padding: 10px !important;
+}
+
+.page-actions a svg {
+    height: 18px !important;
+    width: 18px !important;
+}
+
+.nav-item.dropdown .dropdown-toggle {
+    padding: 10px 5px !important;
+}
