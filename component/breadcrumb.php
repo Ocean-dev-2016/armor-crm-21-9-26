@@ -67,6 +67,21 @@ $module = $module ?? $tbl;
                         <?php endif; ?>
                     <?php endif; ?>
                 
+                    <?php
+                    $permModule = $moduleKey ?? $module ?? $tbl;
+                    $canPrint = hasPermission($permModule, 'print');
+                    $canExcel = hasPermission($permModule, 'excel');
+                    if (!$canPrint && function_exists('hasPermission')) {
+                        // Also fallback to $tbl or $module if different
+                        if ($tbl && hasPermission($tbl, 'print')) $canPrint = true;
+                        if ($module && hasPermission($module, 'print')) $canPrint = true;
+                    }
+                    if (!$canExcel && function_exists('hasPermission')) {
+                        if ($tbl && hasPermission($tbl, 'excel')) $canExcel = true;
+                        if ($module && hasPermission($module, 'excel')) $canExcel = true;
+                    }
+                    ?>
+                    <?php if ($canPrint || $canExcel): ?>
                     <div class="dropdown">
                         <button type="button"
                                 class="btn btn-primary"
@@ -76,6 +91,7 @@ $module = $module ?? $tbl;
                         </button>
 
                         <ul class="dropdown-menu dropdown-menu-end shadow-lg border mb-2 pb-0 pt-2 rounded-3">
+                            <?php if ($canPrint): ?>
                             <li>
                                 <a class="dropdown-item" href="javascript:void(0)" id="btnPrintRecord"
                                    data-tbl="<?= htmlspecialchars($tbl) ?>"
@@ -86,6 +102,8 @@ $module = $module ?? $tbl;
                                     Print
                                 </a>
                             </li>
+                            <?php endif; ?>
+                            <?php if ($canExcel): ?>
                             <li>
                                 <a class="dropdown-item" href="javascript:void(0)" id="btnExportExcel"
                                    data-tbl="<?= htmlspecialchars($tbl) ?>"
@@ -96,8 +114,10 @@ $module = $module ?? $tbl;
                                     Excel
                                 </a>
                             </li>
+                            <?php endif; ?>
                         </ul>
                     </div>
+                    <?php endif; ?>
                 <?php else: ?>
                     <a href="<?= htmlspecialchars($parentUrl) ?>"
                        class="btn btn-primary">

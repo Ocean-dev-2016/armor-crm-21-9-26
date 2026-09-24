@@ -84,15 +84,17 @@ if(isset($_POST['action']) && $_POST['action'] == 'add_permission')
             $adds = $permissionIds['adds'];
             $updates = $permissionIds['updates'];
             $deletes = $permissionIds['deletes'];
+            $print = $permissionIds['print'];
+            $excel = $permissionIds['excel'];
             $perSql = "SELECT * FROM role_permissions WHERE company_id = '$company_id' AND role_id = $id AND module_id = $moduleId LIMIT 1";
             $perQry = db_row($perSql);
             if(isset($perQry) && !empty($perQry))
                 {
-                    $sql = "UPDATE role_permissions SET views = '$views', adds = '$adds', updates = '$updates', deletes = '$deletes', updated_at = NOW() WHERE id = " . $perQry['id'];
+                    $sql = "UPDATE role_permissions SET views = '$views', adds = '$adds', updates = '$updates', deletes = '$deletes', print = '$print', excel = '$excel', updated_at = NOW() WHERE id = " . $perQry['id'];
                 }
                 else
                 {
-                    $sql = "INSERT INTO role_permissions (company_id, role_id, module_id, views, adds, updates, deletes, created_at, updated_at) VALUES ('$company_id', '$id', '$moduleId', '$views', '$adds', '$updates', '$deletes', NOW(), NOW())";
+                    $sql = "INSERT INTO role_permissions (company_id, role_id, module_id, views, adds, updates, deletes, print, excel, created_at, updated_at) VALUES ('$company_id', '$id', '$moduleId', '$views', '$adds', '$updates', '$deletes', '$print', '$excel', NOW(), NOW())";
                 }
             $countrys = db_query($sql);
         }
