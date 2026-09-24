@@ -9,9 +9,17 @@ if ($id <= 0) {
     exit;
 }
 include BASE_PATH . '/include/header.php';
-$userSql = "SELECT r.*, c.plan_id as company_plan_id FROM roles r LEFT JOIN company c ON c.id = r.company_id WHERE r.id = " . $id;
+$userSql = "SELECT r.*, c.plan_id as company_plan_id, c.name as company_name, pr.name as parent_role_name 
+            FROM roles r 
+            LEFT JOIN company c ON c.id = r.company_id 
+            LEFT JOIN roles pr ON pr.id = r.parent_id 
+            WHERE r.id = " . $id;
 $res = db_row($userSql);
 $company_id = $res['company_id'] ?? 0;
+$company_name = $res['company_name'] ?? '';
+$role_name = $res['name'] ?? '';
+$parent_id = (int)($res['parent_id'] ?? 0);
+$parent_role_name = ($parent_id === 0) ? 'Super Admin' : ($res['parent_role_name'] ?? 'Super Admin');
 $role_id = $id;
 $modName = array();
 if (!empty($res)) {
@@ -51,7 +59,9 @@ $permissionSql = "
         views,
         adds,
         updates,
-        deletes
+        deletes,
+        print,
+        excel
     FROM role_permissions
     WHERE company_id = " . (int)$company_id . "
     AND role_id = " . (int)$role_id;
@@ -70,6 +80,8 @@ foreach ($permissionRows as $permission) {
         'adds'    => (int)$permission['adds'],
         'updates' => (int)$permission['updates'],
         'deletes' => (int)$permission['deletes'],
+        'print' => (int)$permission['print'],
+        'excel' => (int)$permission['excel'],
     ];
 }
 
@@ -85,72 +97,215 @@ include BASE_PATH . '/component/breadcrumb.php';
     <div class="row g-4">
         <div class="col-12">
             <div class="card">
-                <div class="table-responsive">
-                    <table class="table table-bordered permission-table mb-0">
-                        <thead>
-                            <tr>
-                                <th class="submenu-name">NAME</th>
-                                <th>VIEW</th>
-                                <th>ADD</th>
-                                <th>UPDATE</th>
-                                <th>DELETE</th>
-                                <th>CHECK ALL</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <?php
-                            $mainModules = [];
-                            $subModules = [];
-                            foreach ($modName as $module) {
-                                $moduleId = (int) $module['id'];
-                                $parentId = (int) $module['parent_id'];
-                                if ($parentId === 0) {
-                                    $mainModules[$moduleId] = $module;
-                                } else {
-                                    $subModules[$parentId][] = $module;
+                <div class="card-header row">
+                    <div class="col-md-3">
+                        <span class="badge bg-primary">Company : <?= htmlspecialchars($company_name) ?></span>
+                    </div>
+                    <div class="col-md-3">
+                        <span class="badge bg-primary">Parent : <?= htmlspecialchars($parent_role_name) ?></span>
+                    </div>
+                    <div class="col-md-3">
+                        <span class="badge bg-primary">Team Role : <?= htmlspecialchars($role_name) ?></span>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-bordered permission-table mb-0">
+                            <thead>
+                                <tr>
+                                    <th class="submenu-name">NAME</th>
+                                    <th>VIEW</th>
+                                    <th>ADD</th>
+                                    <th>UPDATE</th>
+                                    <th>DELETE</th>
+                                    <th>PRINT</th>
+                                    <th>EXCEL</th>
+                                    <th>CHECK ALL</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <?php
+                                $mainModules = [];
+                                $subModules = [];
+                                foreach ($modName as $module) {
+                                    $moduleId = (int) $module['id'];
+                                    $parentId = (int) $module['parent_id'];
+                                    if ($parentId === 0) {
+                                        $mainModules[$moduleId] = $module;
+                                    } else {
+                                        $subModules[$parentId][] = $module;
+                                    }
                                 }
-                            }
 
-                            foreach ($mainModules as $mainModule):
-                                $mainModuleId = (int) $mainModule['id'];
-                                $children = $subModules[$mainModuleId] ?? [];
+                                foreach ($mainModules as $mainModule):
+                                    $mainModuleId = (int) $mainModule['id'];
+                                    $children = $subModules[$mainModuleId] ?? [];
 
-                                if (!empty($children)):
-                            ?>
-                                    <tr class="module-row">
-                                        <td colspan="6">
-                                            <i data-lucide="folder" class="me-2"></i>
-                                            <?= htmlspecialchars($mainModule['name']) ?>
-                                        </td>
-                                    </tr>
+                                    if (!empty($children)):
+                                ?>
+                                        <tr class="module-row">
+                                            <td colspan="8">
+                                                <i data-lucide="folder" class="me-2"></i>
+                                                <?= htmlspecialchars($mainModule['name']) ?>
+                                            </td>
+                                        </tr>
 
-                                    <?php foreach ($children as $subModule): ?>
-                                        <?php
-                                        $moduleId = (int) $subModule['id'];
+                                        <?php foreach ($children as $subModule): ?>
+                                            <?php
+                                            $moduleId = (int) $subModule['id'];
+                                            $permission = $existingPermissions[$moduleId] ?? [
+                                                'views' => 0,
+                                                'adds' => 0,
+                                                'updates' => 0,
+                                                'deletes' => 0,
+                                                'print' => 0,
+                                                'excel' => 0
+                                            ];
+                                            $checkAll =
+                                            $permission['views'] == 1 &&
+                                            $permission['adds'] == 1 &&
+                                            $permission['updates'] == 1 &&
+                                            $permission['deletes'] == 1 &&
+                                            $permission['print'] == 1 &&
+                                            $permission['excel'] == 1;
+                                            ?>
+
+                                            <tr class="permission-row">
+                                                <!-- NAME -->
+                                                <td class="submenu-title">
+                                                    <span class="submenu-circle"></span>
+                                                    <?= htmlspecialchars($subModule['name']) ?>
+                                                </td>
+
+                                                <!-- VIEW -->
+                                                <td class="text-center">
+                                                    <div class="form-check permission-checkbox mb-2">
+                                                        <input type="hidden" name="permissions[<?= $moduleId ?>][views]" value="0">
+                                                        <input
+                                                            class="form-check-input permission-input"
+                                                            type="checkbox"
+                                                            name="permissions[<?= $moduleId ?>][views]"
+                                                            value="1"
+                                                            data-module-id="<?= $moduleId ?>" 
+                                                            <?= $permission['views'] == 1 ? 'checked' : '' ?>>
+                                                    </div>
+                                                </td>
+
+                                                <!-- ADD -->
+                                                <td class="text-center">
+                                                    <div class="form-check permission-checkbox mb-2">
+                                                        <input type="hidden" name="permissions[<?= $moduleId ?>][adds]" value="0">
+                                                        <input
+                                                            class="form-check-input permission-input"
+                                                            type="checkbox"
+                                                            name="permissions[<?= $moduleId ?>][adds]"                                                        
+                                                            value="1"
+                                                            data-module-id="<?= $moduleId ?>" 
+                                                            <?= $permission['adds'] == 1 ? 'checked' : '' ?>>
+                                                    </div>
+                                                </td>
+
+                                                <!-- UPDATE -->
+                                                <td class="text-center">
+                                                    <div class="form-check permission-checkbox mb-2">
+                                                        <input type="hidden" name="permissions[<?= $moduleId ?>][updates]" value="0">
+                                                        <input
+                                                            class="form-check-input permission-input"
+                                                            type="checkbox"
+                                                            name="permissions[<?= $moduleId ?>][updates]"
+                                                            value="1"
+                                                            data-module-id="<?= $moduleId ?>" 
+                                                            <?= $permission['updates'] == 1 ? 'checked' : '' ?>>
+                                                    </div>
+                                                </td>
+
+                                                <!-- DELETE -->
+                                                <td class="text-center">
+
+                                                    <div class="form-check permission-checkbox mb-2">
+                                                        <input type="hidden" name="permissions[<?= $moduleId ?>][deletes]" value="0">
+                                                        <input
+                                                            class="form-check-input permission-input"
+                                                            type="checkbox"
+                                                            name="permissions[<?= $moduleId ?>][deletes]"
+                                                            value="1"
+                                                            data-module-id="<?= $moduleId ?>" 
+                                                            <?= $permission['deletes'] == 1 ? 'checked' : '' ?>>
+                                                    </div>
+                                                </td>
+
+                                                <!-- PRINT -->
+                                                <td class="text-center">
+
+                                                    <div class="form-check permission-checkbox mb-2">
+                                                        <input type="hidden" name="permissions[<?= $moduleId ?>][print]" value="0">
+                                                        <input
+                                                            class="form-check-input permission-input"
+                                                            type="checkbox"
+                                                            name="permissions[<?= $moduleId ?>][print]"
+                                                            value="1"
+                                                            data-module-id="<?= $moduleId ?>" 
+                                                            <?= $permission['print'] == 1 ? 'checked' : '' ?>>
+                                                    </div>
+                                                </td>
+
+                                                <!-- EXCEL -->
+                                                <td class="text-center">
+
+                                                    <div class="form-check permission-checkbox mb-2">
+                                                        <input type="hidden" name="permissions[<?= $moduleId ?>][excel]" value="0">
+                                                        <input
+                                                            class="form-check-input permission-input"
+                                                            type="checkbox"
+                                                            name="permissions[<?= $moduleId ?>][excel]"
+                                                            value="1"
+                                                            data-module-id="<?= $moduleId ?>" 
+                                                            <?= $permission['excel'] == 1 ? 'checked' : '' ?>>
+                                                    </div>
+                                                </td>
+
+
+                                                <!-- CHECK ALL -->
+                                                <td class="text-center">
+                                                    <div class="form-check permission-checkbox mb-2">
+                                                        <input
+                                                            class="form-check-input check-all"
+                                                            type="checkbox"
+                                                            data-module-id="<?= $moduleId ?>"
+                                                            <?= $checkAll ? 'checked' : '' ?>>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        <?php endforeach; ?>
+                                    <?php
+                                    else:
+                                        $moduleId = $mainModuleId;
                                         $permission = $existingPermissions[$moduleId] ?? [
                                             'views' => 0,
                                             'adds' => 0,
                                             'updates' => 0,
-                                            'deletes' => 0
+                                            'deletes' => 0,
+                                            'print' => 0,
+                                            'excel' => 0
                                         ];
                                         $checkAll =
                                         $permission['views'] == 1 &&
                                         $permission['adds'] == 1 &&
                                         $permission['updates'] == 1 &&
-                                        $permission['deletes'] == 1;
-                                        ?>
+                                        $permission['deletes'] == 1 &&
+                                        $permission['print'] == 1 &&
+                                        $permission['excel'] == 1;
+                                    ?>
 
                                         <tr class="permission-row">
-                                            <!-- NAME -->
                                             <td class="submenu-title">
                                                 <span class="submenu-circle"></span>
-                                                <?= htmlspecialchars($subModule['name']) ?>
+                                                <i data-lucide="folder" class="me-2"></i>
+                                                <?= htmlspecialchars($mainModule['name']) ?>
                                             </td>
-
-                                            <!-- VIEW -->
                                             <td class="text-center">
                                                 <div class="form-check permission-checkbox mb-2">
-                                                     <input type="hidden" name="permissions[<?= $moduleId ?>][views]" value="0">
+                                                    <input type="hidden" name="permissions[<?= $moduleId ?>][views]" value="0">
                                                     <input
                                                         class="form-check-input permission-input"
                                                         type="checkbox"
@@ -164,11 +319,11 @@ include BASE_PATH . '/component/breadcrumb.php';
                                             <!-- ADD -->
                                             <td class="text-center">
                                                 <div class="form-check permission-checkbox mb-2">
-                                                     <input type="hidden" name="permissions[<?= $moduleId ?>][adds]" value="0">
+                                                    <input type="hidden" name="permissions[<?= $moduleId ?>][adds]" value="0">
                                                     <input
                                                         class="form-check-input permission-input"
                                                         type="checkbox"
-                                                        name="permissions[<?= $moduleId ?>][adds]"                                                        
+                                                        name="permissions[<?= $moduleId ?>][adds]"
                                                         value="1"
                                                         data-module-id="<?= $moduleId ?>" 
                                                         <?= $permission['adds'] == 1 ? 'checked' : '' ?>>
@@ -178,7 +333,7 @@ include BASE_PATH . '/component/breadcrumb.php';
                                             <!-- UPDATE -->
                                             <td class="text-center">
                                                 <div class="form-check permission-checkbox mb-2">
-                                                     <input type="hidden" name="permissions[<?= $moduleId ?>][updates]" value="0">
+                                                    <input type="hidden" name="permissions[<?= $moduleId ?>][updates]" value="0">
                                                     <input
                                                         class="form-check-input permission-input"
                                                         type="checkbox"
@@ -191,9 +346,8 @@ include BASE_PATH . '/component/breadcrumb.php';
 
                                             <!-- DELETE -->
                                             <td class="text-center">
-
                                                 <div class="form-check permission-checkbox mb-2">
-                                                     <input type="hidden" name="permissions[<?= $moduleId ?>][deletes]" value="0">
+                                                    <input type="hidden" name="permissions[<?= $moduleId ?>][deletes]" value="0">
                                                     <input
                                                         class="form-check-input permission-input"
                                                         type="checkbox"
@@ -204,6 +358,35 @@ include BASE_PATH . '/component/breadcrumb.php';
                                                 </div>
                                             </td>
 
+                                            <!-- PRINT -->
+                                            <td class="text-center">
+
+                                                <div class="form-check permission-checkbox mb-2">
+                                                        <input type="hidden" name="permissions[<?= $moduleId ?>][print]" value="0">
+                                                    <input
+                                                        class="form-check-input permission-input"
+                                                        type="checkbox"
+                                                        name="permissions[<?= $moduleId ?>][print]"
+                                                        value="1"
+                                                        data-module-id="<?= $moduleId ?>" 
+                                                        <?= $permission['print'] == 1 ? 'checked' : '' ?>>
+                                                </div>
+                                            </td>
+
+                                            <!-- EXCEL -->
+                                            <td class="text-center">
+
+                                                <div class="form-check permission-checkbox mb-2">
+                                                        <input type="hidden" name="permissions[<?= $moduleId ?>][excel]" value="0">
+                                                    <input
+                                                        class="form-check-input permission-input"
+                                                        type="checkbox"
+                                                        name="permissions[<?= $moduleId ?>][excel]"
+                                                        value="1"
+                                                        data-module-id="<?= $moduleId ?>" 
+                                                        <?= $permission['excel'] == 1 ? 'checked' : '' ?>>
+                                                </div>
+                                            </td>
 
                                             <!-- CHECK ALL -->
                                             <td class="text-center">
@@ -216,109 +399,21 @@ include BASE_PATH . '/component/breadcrumb.php';
                                                 </div>
                                             </td>
                                         </tr>
-                                    <?php endforeach; ?>
                                 <?php
-                                else:
-                                    $moduleId = $mainModuleId;
-                                    $permission = $existingPermissions[$moduleId] ?? [
-                                        'views' => 0,
-                                        'adds' => 0,
-                                        'updates' => 0,
-                                        'deletes' => 0
-                                    ];
-                                    $checkAll =
-                                    $permission['views'] == 1 &&
-                                    $permission['adds'] == 1 &&
-                                    $permission['updates'] == 1 &&
-                                    $permission['deletes'] == 1;
+                                    endif;
+                                endforeach;
                                 ?>
-
-                                    <tr class="permission-row">
-                                        <td class="submenu-title">
-                                            <span class="submenu-circle"></span>
-                                            <i data-lucide="folder" class="me-2"></i>
-                                            <?= htmlspecialchars($mainModule['name']) ?>
-                                        </td>
-                                        <td class="text-center">
-                                            <div class="form-check permission-checkbox mb-2">
-                                                <input type="hidden" name="permissions[<?= $moduleId ?>][views]" value="0">
-                                                <input
-                                                    class="form-check-input permission-input"
-                                                    type="checkbox"
-                                                    name="permissions[<?= $moduleId ?>][views]"
-                                                    value="1"
-                                                    data-module-id="<?= $moduleId ?>" 
-                                                    <?= $permission['views'] == 1 ? 'checked' : '' ?>>
-                                            </div>
-                                        </td>
-
-                                        <!-- ADD -->
-                                        <td class="text-center">
-                                            <div class="form-check permission-checkbox mb-2">
-                                                <input type="hidden" name="permissions[<?= $moduleId ?>][adds]" value="0">
-                                                <input
-                                                    class="form-check-input permission-input"
-                                                    type="checkbox"
-                                                    name="permissions[<?= $moduleId ?>][adds]"
-                                                    value="1"
-                                                    data-module-id="<?= $moduleId ?>" 
-                                                    <?= $permission['adds'] == 1 ? 'checked' : '' ?>>
-                                            </div>
-                                        </td>
-
-                                        <!-- UPDATE -->
-                                        <td class="text-center">
-                                            <div class="form-check permission-checkbox mb-2">
-                                                <input type="hidden" name="permissions[<?= $moduleId ?>][updates]" value="0">
-                                                <input
-                                                    class="form-check-input permission-input"
-                                                    type="checkbox"
-                                                    name="permissions[<?= $moduleId ?>][updates]"
-                                                    value="1"
-                                                    data-module-id="<?= $moduleId ?>" 
-                                                    <?= $permission['updates'] == 1 ? 'checked' : '' ?>>
-                                            </div>
-                                        </td>
-
-                                        <!-- DELETE -->
-                                        <td class="text-center">
-                                            <div class="form-check permission-checkbox mb-2">
-                                                <input type="hidden" name="permissions[<?= $moduleId ?>][deletes]" value="0">
-                                                <input
-                                                    class="form-check-input permission-input"
-                                                    type="checkbox"
-                                                    name="permissions[<?= $moduleId ?>][deletes]"
-                                                    value="1"
-                                                    data-module-id="<?= $moduleId ?>" 
-                                                    <?= $permission['deletes'] == 1 ? 'checked' : '' ?>>
-                                            </div>
-                                        </td>
-
-                                        <!-- CHECK ALL -->
-                                        <td class="text-center">
-                                            <div class="form-check permission-checkbox mb-2">
-                                                <input
-                                                    class="form-check-input check-all"
-                                                    type="checkbox"
-                                                    data-module-id="<?= $moduleId ?>"
-                                                    <?= $checkAll ? 'checked' : '' ?>>
-                                            </div>
-                                        </td>
-                                    </tr>
-                            <?php
-                                endif;
-                            endforeach;
-                            ?>
-                        </tbody>
-                    </table>
-                </div>
-                <div class="card-footer text-end">
-                    <button type="submit"
-                        class="btn btn-primary"
-                        id="saveTeamRole">
-                        <i data-lucide="save" class="me-1"></i>
-                        Save Permissions
-                    </button>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="card-footer text-end">
+                        <button type="submit"
+                            class="btn btn-primary"
+                            id="saveTeamRole">
+                            <i data-lucide="save" class="me-1"></i>
+                            Save Permissions
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>

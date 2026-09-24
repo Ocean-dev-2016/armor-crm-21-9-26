@@ -128,7 +128,7 @@ function getUserRolePermissions(): array
     $roleId    = (int)($_SESSION['role_id'] ?? 0);
 
     if ($companyId > 0 && $roleId > 0) {
-        $rows = db_rows("SELECT module_id, views, adds, updates, deletes 
+        $rows = db_rows("SELECT module_id, views, adds, updates, deletes, print, excel 
                          FROM role_permissions 
                          WHERE company_id = $companyId AND role_id = $roleId");
         if ($rows) {
@@ -138,6 +138,8 @@ function getUserRolePermissions(): array
                     'adds'    => (int)$r['adds'],
                     'updates' => (int)$r['updates'],
                     'deletes' => (int)$r['deletes'],
+                    'print' => (int)$r['print'],
+                    'excel' => (int)$r['excel'],
                 ];
             }
         }
@@ -217,6 +219,8 @@ function checkPermissionOrDeny($module, string $action = 'views'): void
             'adds'    => 'add records in',
             'updates' => 'edit records in',
             'deletes' => 'delete records in',
+            'print' => 'print in',
+            'excel' => 'export to excel in',
             default   => 'view',
         };
         echo "
