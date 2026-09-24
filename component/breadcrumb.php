@@ -110,7 +110,7 @@ $module = $module ?? $tbl;
                                    data-fields="<?= htmlspecialchars($fields) ?>"
                                    data-page-name="<?= htmlspecialchars($pageNm) ?>"
                                    data-module="<?= htmlspecialchars($module) ?>">
-                                    <i data-lucide="file-text" class="me-2"></i>
+                                    <i data-lucide="save" class="me-2"></i>
                                     Excel
                                 </a>
                             </li>
