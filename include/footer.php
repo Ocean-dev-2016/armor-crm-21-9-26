@@ -17,7 +17,7 @@
         aria-label="Close">
       </button>
     </div>
-    <div id="commonToastBody" class="toast-body">
+    <div id="commonToastBody" class="toast-body" style="font-size:16px;">
       Your action has been completed successfully!
     </div>
   </div>

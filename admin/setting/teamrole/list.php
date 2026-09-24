@@ -13,6 +13,9 @@ $company = db_rows($sql);
 $showAdd = hasPermission('teamrole', 'adds');
 $breadcrumbType = 'list';
 $addType = 'popup';
+$fields = 'name:Name';
+$module = 'team-role';
+$tbl = 'role';
 include BASE_PATH . '/component/breadcrumb.php';
 ?>
 

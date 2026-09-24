@@ -12,6 +12,9 @@ $country = db_rows($sql);
 $showAdd = hasPermission('state', 'adds');
 $breadcrumbType = 'list';
 $addType = 'popup';
+$fields = 'country_id:Country, name:Name';
+$module = 'state';
+$tbl = 'state';
 include BASE_PATH . '/component/breadcrumb.php';
 ?>
 

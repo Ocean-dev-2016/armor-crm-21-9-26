@@ -232,6 +232,7 @@ include BASE_PATH . '/include/css.php';
               <div class="collapse" id="mobileSalesMenu">
                 <a href="<?= SITE_URL ?>module" class="list-group-item list-group-item-action ps-5">Module</a>
                 <a href="<?= SITE_URL ?>plan" class="list-group-item list-group-item-action ps-5">Plan</a>
+                <a href="<?= SITE_URL ?>company-type" class="list-group-item list-group-item-action ps-5">Company Type</a>
                 <a href="<?= SITE_URL ?>company" class="list-group-item list-group-item-action ps-5">Company</a>
                 <a href="<?= SITE_URL ?>teamrole" class="list-group-item list-group-item-action ps-5">Team Role</a>
                 <a href="<?= SITE_URL ?>team-person" class="list-group-item list-group-item-action ps-5">Team Person</a>
@@ -298,6 +299,7 @@ include BASE_PATH . '/include/css.php';
                       <ul class="dropdown-menu shadow-lg border-0 mt-0 sidebar-submenu" aria-labelledby="settingDropdown">
                         <li><a class='dropdown-item sub-link' href='<?= SITE_URL ?>module'>Module</a></li>
                         <li><a class='dropdown-item sub-link' href='<?= SITE_URL ?>plan'>Plan</a></li>
+                        <li><a class='dropdown-item sub-link' href='<?= SITE_URL ?>company-type'>Company Type</a></li>
                         <li><a class='dropdown-item sub-link' href='<?= SITE_URL ?>company'>Company</a></li>
                         <li><a class='dropdown-item sub-link' href='<?= SITE_URL ?>teamrole'>Team Role</a></li>
                         <li><a class='dropdown-item sub-link' href='<?= SITE_URL ?>team-person'>Team Person</a></li>

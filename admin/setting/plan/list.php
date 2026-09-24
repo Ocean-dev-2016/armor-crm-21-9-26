@@ -9,6 +9,9 @@ $showAdd = hasPermission('plan', 'adds');
 $addType = 'redirect';
 $addUrl  = SITE_URL . 'plan/add';
 $breadcrumbType = 'list';
+$fields = 'name:Name';
+$module = 'plan';
+$tbl = 'plan';
 include BASE_PATH . '/component/breadcrumb.php';
 ?>
 <div class="row g-4">

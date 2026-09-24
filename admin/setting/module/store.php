@@ -34,6 +34,54 @@ if (isset($_GET['action']) && $_GET['action'] === 'edit') {
     exit;
 }
 
+if (isset($_GET['action']) && $_GET['action'] === 'get_sub_modules') {
+    $parent_id = isset($_GET['parent_id']) ? (int)$_GET['parent_id'] : 0;
+    if ($parent_id <= 0) {
+        $response['message'] = 'Invalid parent ID.';
+        echo json_encode($response);
+        exit;
+    }
+
+    $subSql = "SELECT id, name, icon, route, order_by FROM $tbl WHERE parent_id = $parent_id AND status = 1 ORDER BY order_by ASC, id ASC";
+    $subResult = db_rows($subSql);
+    $response['status'] = true;
+    $response['message'] = 'Sub modules fetched successfully.';
+    $response['data'] = $subResult ?: [];
+    echo json_encode($response);
+    exit;
+}
+
+if (isset($_POST['action']) && $_POST['action'] === 'update_position') {
+    if (!hasPermission('module', 'updates')) {
+        $response['message'] = 'Permission denied.';
+        echo json_encode($response);
+        exit;
+    }
+
+    $parent_id = isset($_POST['parent_id']) ? (int)$_POST['parent_id'] : 0;
+    $order = isset($_POST['order']) && is_array($_POST['order']) ? $_POST['order'] : [];
+
+    if ($parent_id <= 0 || empty($order)) {
+        $response['message'] = 'Invalid request parameters.';
+        echo json_encode($response);
+        exit;
+    }
+
+    $position = 1;
+    foreach ($order as $moduleId) {
+        $mId = (int)$moduleId;
+        if ($mId > 0) {
+            db_query("UPDATE $tbl SET order_by = $position, updated_at = NOW() WHERE id = $mId AND parent_id = $parent_id");
+            $position++;
+        }
+    }
+
+    $response['status'] = true;
+    $response['message'] = 'Positions updated successfully.';
+    echo json_encode($response);
+    exit;
+}
+
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     $response['message'] = 'Invalid request method.';
     echo json_encode($response);

@@ -7,6 +7,9 @@ $isEdit = $isEdit ?? false;
 $addUrl = $addUrl ?? '';
 $addType = $addType ?? 'redirect';
 $customName = $customName ?? '';
+$tbl = $tbl ?? '';
+$fields = $fields ?? 'name';
+$module = $module ?? $tbl;
 ?>
 <div class="card mb-2">
     <div class="card-body breadcrumb-body">
@@ -63,13 +66,45 @@ $customName = $customName ?? '';
                             </a>
                         <?php endif; ?>
                     <?php endif; ?>
+                
+                    <div class="dropdown">
+                        <button type="button"
+                                class="btn btn-primary"
+                                data-bs-toggle="dropdown"
+                                aria-expanded="false">
+                            <i data-lucide="settings"></i>
+                        </button>
+
+                        <ul class="dropdown-menu dropdown-menu-end shadow-lg border mb-2 pb-0 pt-2 rounded-3">
+                            <li>
+                                <a class="dropdown-item" href="javascript:void(0)" id="btnPrintRecord"
+                                   data-tbl="<?= htmlspecialchars($tbl) ?>"
+                                   data-fields="<?= htmlspecialchars($fields) ?>"
+                                   data-page-name="<?= htmlspecialchars($pageNm) ?>"
+                                   data-module="<?= htmlspecialchars($module) ?>">
+                                    <i data-lucide="file-text" class="me-2"></i>
+                                    Print
+                                </a>
+                            </li>
+                            <li>
+                                <a class="dropdown-item" href="javascript:void(0)" id="btnExportExcel"
+                                   data-tbl="<?= htmlspecialchars($tbl) ?>"
+                                   data-fields="<?= htmlspecialchars($fields) ?>"
+                                   data-page-name="<?= htmlspecialchars($pageNm) ?>"
+                                   data-module="<?= htmlspecialchars($module) ?>">
+                                    <i data-lucide="file-text" class="me-2"></i>
+                                    Excel
+                                </a>
+                            </li>
+                        </ul>
+                    </div>
                 <?php else: ?>
                     <a href="<?= htmlspecialchars($parentUrl) ?>"
                        class="btn btn-primary">
                         <i data-lucide="arrow-left" class="me-1"></i>
                         Back
                     </a>
-                <?php endif; ?>
+                <?php endif; ?> 
             </div>
         </div>
     </div>

@@ -9,6 +9,9 @@ $showAdd = hasPermission('team-person', 'adds');
 $addType = 'redirect';
 $addUrl  = SITE_URL . 'team-person/add';
 $breadcrumbType = 'list';
+$fields = 'name:Name';
+$module = 'team-person';
+$tbl = 'users';
 include BASE_PATH . '/component/breadcrumb.php';
 ?>
 <div class="row g-4">

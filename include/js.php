@@ -23,7 +23,7 @@
 <script src="https://cdn.datatables.net/2.3.3/js/dataTables.bootstrap5.min.js"></script>
 <script src="<?= SITE_URL ?>assets/js/components/datatables.js"></script>
 <script src="<?= SITE_URL ?>assets/libs/apexcharts/apexcharts.min.js"></script>
-<script src="<?= SITE_URL ?>assets/js/components/editor.js"></script>
+<script src="<?= SITE_URL ?>assets/libs/quill/quill.js"></script>
 <script src="<?= SITE_URL ?>assets/js/main.js"></script>
 <script src="<?= SITE_URL ?>assets/js/pages/dashboard-crm.js"></script>
 <script src="<?= SITE_URL ?>assets/js/custom.js"></script>

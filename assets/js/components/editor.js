@@ -6,10 +6,16 @@ function initEditor() {
       theme: 'snow',
       modules: {
         toolbar: [
-          [{ 'header': [1, 2, 3, false] }],
+          [{ 'font': [] }, { 'size': [] }],
           ['bold', 'italic', 'underline', 'strike'],
-          ['blockquote', 'code-block'],
-          [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+          [{ 'color': [] }, { 'background': [] }],
+          [{ 'script': 'super' }, { 'script': 'sub' }],
+          [{ 'header': [1, 2, 3, 4, 5, 6, false] }],
+          [{ 'list': 'ordered' }, { 'list': 'bullet' }],
+          [{ 'indent': '-1' }, { 'indent': '+1' }],
+          [{ 'direction': 'rtl' }],
+          [{ 'align': [] }],
+          ['link', 'image', 'video'],
           ['clean']
         ]
       }

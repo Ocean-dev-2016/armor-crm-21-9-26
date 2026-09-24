@@ -250,4 +250,68 @@ $(document).ready(function () {
         let state_id = $(this).val();
         loadCitiesByState(state_id, null);
     });
+
+    // ==========================================
+    // Common Print Record Handler
+    // ==========================================
+    $(document).on('click', '#btnPrintRecord', function () {
+        let tbl = $(this).data('tbl') || '';
+        let fields = $(this).data('fields') || 'name';
+        let pageName = $(this).data('page-name') || '';
+        let module = $(this).data('module') || tbl;
+
+        if (!tbl) {
+            showToast('Table name not configured for print.', 'error');
+            return;
+        }
+
+        let searchVal = '';
+        if ($.fn.DataTable && $.fn.DataTable.isDataTable('.data-table')) {
+            searchVal = $('.data-table').DataTable().search();
+        }
+
+        let url = SITE_URL + 'component/common.php?action=print_data'
+            + '&tbl=' + encodeURIComponent(tbl)
+            + '&fields=' + encodeURIComponent(fields)
+            + '&pageNm=' + encodeURIComponent(pageName)
+            + '&module=' + encodeURIComponent(module);
+
+        if (searchVal) {
+            url += '&search=' + encodeURIComponent(searchVal);
+        }
+
+        window.open(url, '_blank');
+    });
+
+    // ==========================================
+    // Common Excel Export Handler
+    // ==========================================
+    $(document).on('click', '#btnExportExcel', function () {
+        let tbl = $(this).data('tbl') || '';
+        let fields = $(this).data('fields') || 'name';
+        let pageName = $(this).data('page-name') || '';
+        let module = $(this).data('module') || tbl;
+
+        if (!tbl) {
+            showToast('Table name not configured for excel export.', 'error');
+            return;
+        }
+
+        let searchVal = '';
+        if ($.fn.DataTable && $.fn.DataTable.isDataTable('.data-table')) {
+            searchVal = $('.data-table').DataTable().search();
+        }
+
+        let url = SITE_URL + 'component/common.php?action=export_excel'
+            + '&tbl=' + encodeURIComponent(tbl)
+            + '&fields=' + encodeURIComponent(fields)
+            + '&pageNm=' + encodeURIComponent(pageName)
+            + '&module=' + encodeURIComponent(module);
+
+        if (searchVal) {
+            url += '&search=' + encodeURIComponent(searchVal);
+        }
+
+        window.location.href = url;
+    });
 });

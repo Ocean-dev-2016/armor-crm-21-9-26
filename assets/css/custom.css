@@ -174,3 +174,133 @@
 .nav-item.dropdown .dropdown-toggle {
     padding: 10px 5px !important;
 }
+
+/* File Upload & Preview Components */
+.btn-select-file {
+    background-color: #c94a50 !important;
+    border-color: #c94a50 !important;
+    color: #fff !important;
+    text-transform: uppercase;
+    font-weight: 500;
+}
+
+.btn-select-file:hover,
+.btn-select-file:focus {
+    background-color: #b33e44 !important;
+    border-color: #b33e44 !important;
+    color: #fff !important;
+}
+
+.image-preview-wrapper {
+    position: relative;
+    display: inline-block;
+    margin-top: 0.5rem;
+}
+
+.image-preview-thumb {
+    width: 80px;
+    height: 80px;
+    object-fit: cover;
+    border-radius: 6px;
+    border: 1px solid #dee2e6;
+}
+
+.btn-remove-preview {
+    width: 20px;
+    height: 20px;
+    position: absolute;
+    top: 0;
+    right: 0;
+    padding: 0;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transform: translate(30%, -30%);
+}
+
+.btn-modal-submit {
+    background-color: #1b9e84 !important;
+    border-color: #1b9e84 !important;
+    color: #fff !important;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+.btn-modal-submit:hover,
+.btn-modal-submit:focus {
+    background-color: #15806b !important;
+    border-color: #15806b !important;
+    color: #fff !important;
+}
+
+.btn-modal-back {
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+/* Table Thumbnail */
+.table-img-thumb {
+    width: 45px;
+    height: 45px;
+    object-fit: cover;
+    border-radius: 4px;
+    border: 1px solid #e0e0e0;
+}
+
+.table-img-placeholder {
+    width: 45px;
+    height: 45px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Form Section Header (matching screenshot) */
+.form-section-header {
+    background-color: #8da2a8;
+    color: #ffffff;
+    font-size: 15px;
+    font-weight: 600;
+    padding: 10px 16px;
+    border-radius: 4px 4px 0 0;
+    margin-bottom: 0;
+}
+
+.form-section-card {
+    border-radius: 4px;
+    border: 1px solid #dee2e6;
+    overflow: hidden;
+    margin-bottom: 1.5rem;
+    background-color: #ffffff;
+}
+
+.form-section-body {
+    padding: 20px;
+}
+
+.editor-container {
+    height: 120px;
+    background-color: #ffffff;
+}
+
+.editor-container .ql-editor {
+    max-height: 120px;
+    overflow-y: auto;
+}
+
+/* Hide empty or placeholder options in TomSelect dropdown list */
+.ts-dropdown .option[data-value=""],
+.ts-dropdown .option:empty {
+    display: none !important;
+}
+
+.data-table td {
+    text-transform: capitalize;
+}
+
+.data-table td.email-col,
+.data-table td.text-lowercase,
+.data-table td[data-field="email"] {
+    text-transform: none !important;
+}
