@@ -103,7 +103,7 @@ include BASE_PATH . '/include/css.php';
             <i data-lucide="menu"></i>
           </button>
 
-          <img src="<?= SITE_URL ?>assets/image/crm_logo.png" alt="Logo" class="logo">
+          <a href="<?= SITE_URL ?>"><img src="<?= SITE_URL ?>assets/image/crm_logo.png" alt="Logo" class="logo"></a>
         </div>
 
         <div class="d-flex align-items-center gap-3">
@@ -163,7 +163,7 @@ include BASE_PATH . '/include/css.php';
           </div>
           <div class="dropdown dropup">
             <button class="btn btn-light rounded-circle p-0 avatar avatar-md" data-bs-toggle="dropdown">
-              <img src="<?= SITE_URL ?>assets/images/user-8.jpg" alt="User" class="rounded-circle w-100 h-100">
+              <a href="<?= SITE_URL ?>"><img src="<?= SITE_URL ?>assets/images/user-8.jpg" alt="User" class="rounded-circle w-100 h-100"></a>
             </button>
             <ul class="dropdown-menu setting_dropdown w-100 shadow-lg border mb-2 pb-0 pt-2 rounded-3">
               <li><a class='dropdown-item' href='javascript:void(0)'><i data-lucide="user" class="me-2 fs-16"></i>Current User : <?php echo $_SESSION['username'] ?? '' ?></a></li>
@@ -188,7 +188,7 @@ include BASE_PATH . '/include/css.php';
       <div class="offcanvas offcanvas-start" tabindex="-1" id="mobileMenu"
         aria-labelledby="mobileMenuLabel">
         <div class="offcanvas-header border-bottom">
-          <img src="<?= SITE_URL ?>assets/image/crm_logo.png" alt="Logo" class="logo">
+            <a href="<?= SITE_URL ?>"><img src="<?= SITE_URL ?>assets/image/crm_logo.png" alt="Logo" class="logo"></a>
           <button type="button"
             class="btn-close"
             data-bs-dismiss="offcanvas"

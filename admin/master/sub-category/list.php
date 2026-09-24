@@ -9,7 +9,7 @@ checkPermissionOrDeny('sub-category', 'views');
 $pageNm = 'Sub Category';
 $tbl = 'sub_category';
 $fields = 'name:Name,category_id:Category,image:Image';
-$module = 'sub-category';
+$module = 'sub-category'; 
 $showAdd = hasPermission('sub-category', 'adds');
 $breadcrumbType = 'list';
 $addType = 'popup';
