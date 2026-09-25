@@ -1,5 +1,7 @@
 <?php
-session_start();
+if (session_status() === PHP_SESSION_NONE) {
+  session_start();
+}
 require_once __DIR__ . '/../conn/db.php';
 if (empty($_SESSION)) {
   header("Location: " . SITE_URL . "login");
@@ -10,6 +12,41 @@ require_once __DIR__ . '/../conn/helper.php';
 
 $msql = "SELECT * FROM module WHERE status = 1 ORDER BY order_by ASC, id ASC";
 $mres = db_rows($msql);
+
+// Fetch logged-in user and company profile/logos
+$headerUserId = (int)($_SESSION['user_id'] ?? 0);
+$headerUser = null;
+if ($headerUserId > 0) {
+  $headerUser = db_row("SELECT id, name, username, email, company_id, profile_img FROM users WHERE id = $headerUserId LIMIT 1");
+}
+
+$headerCompanyId = (int)($headerUser['company_id'] ?? ($_SESSION['company_id'] ?? 0));
+$headerCompany = null;
+if ($headerCompanyId > 0) {
+  $headerCompany = db_row("SELECT id, name, header_image, app_logo, favicon FROM company WHERE id = $headerCompanyId LIMIT 1");
+}
+
+// User Profile Image (with default fallback)
+$defaultUserAvatar = SITE_URL . 'assets/images/user-8.jpg';
+$headerUserProfileImg = $defaultUserAvatar;
+if (!empty($headerUser['profile_img']) && file_exists(BASE_PATH . '/uploads/profile/' . $headerUser['profile_img'])) {
+  $headerUserProfileImg = SITE_URL . 'uploads/profile/' . $headerUser['profile_img'];
+}
+
+// Company Header Logo (with default fallback)
+$defaultCompanyLogo = SITE_URL . 'assets/image/crm_logo.png';
+$headerCompanyLogo = $defaultCompanyLogo;
+if (!empty($headerCompany['header_image']) && file_exists(BASE_PATH . '/uploads/company/' . $headerCompany['header_image'])) {
+  $headerCompanyLogo = SITE_URL . 'uploads/company/' . $headerCompany['header_image'];
+}
+
+// Company Favicon (with default fallback)
+$headerFavicon = $defaultCompanyLogo;
+if (!empty($headerCompany['favicon']) && file_exists(BASE_PATH . '/uploads/company/' . $headerCompany['favicon'])) {
+  $headerFavicon = SITE_URL . 'uploads/company/' . $headerCompany['favicon'];
+} elseif ($headerCompanyLogo !== $defaultCompanyLogo) {
+  $headerFavicon = $headerCompanyLogo;
+}
 
 $isSuperadmin = isset($_SESSION['user_type']) && $_SESSION['user_type'] === 'superadmin';
 $allowedModules = null; 
@@ -103,7 +140,7 @@ include BASE_PATH . '/include/css.php';
             <i data-lucide="menu"></i>
           </button>
 
-          <a href="<?= SITE_URL ?>"><img src="<?= SITE_URL ?>assets/image/crm_logo.png" alt="Logo" class="logo"></a>
+          <a href="<?= SITE_URL ?>"><img src="<?= $headerCompanyLogo ?>" alt="Logo" class="logo"></a>
         </div>
 
         <div class="d-flex align-items-center gap-3">
@@ -163,12 +200,12 @@ include BASE_PATH . '/include/css.php';
           </div>
           <div class="dropdown dropup">
             <button class="btn btn-light rounded-circle p-0 avatar avatar-md" data-bs-toggle="dropdown">
-              <a href="<?= SITE_URL ?>"><img src="<?= SITE_URL ?>assets/images/user-8.jpg" alt="User" class="rounded-circle w-100 h-100"></a>
+              <a href="<?= SITE_URL ?>"><img src="<?= $headerUserProfileImg ?>" alt="User" class="rounded-circle w-100 h-100" style="object-fit: cover;"></a>
             </button>
             <ul class="dropdown-menu setting_dropdown w-100 shadow-lg border mb-2 pb-0 pt-2 rounded-3">
               <li><a class='dropdown-item' href='javascript:void(0)'><i data-lucide="user" class="me-2 fs-16"></i>Current User : <?php echo $_SESSION['username'] ?? '' ?></a></li>
               <li><a class='dropdown-item' href='<?= SITE_URL ?>'><i data-lucide="star" class="me-2 fs-16"></i>Special Permission</a></li>
-              <li><a class='dropdown-item' href='<?= SITE_URL ?>'><i data-lucide="user" class="me-2 fs-16"></i> Profile</a></li>
+              <li><a class='dropdown-item' href='<?= SITE_URL ?>profile'><i data-lucide="user" class="me-2 fs-16"></i> Profile</a></li>
               <li><a class="dropdown-item" href="<?= SITE_URL ?>"><i data-lucide="phone" class="me-2 fs-16"></i> Web Apis</a></li>
               <li><a class="dropdown-item" href="<?= SITE_URL ?>"><i data-lucide="server" class="me-2 fs-16"></i> Application Info</a></li>
               <li><a class='dropdown-item' href='<?= SITE_URL ?>'><i data-lucide="info" class="me-2 fs-16"></i> Blocked IP</a></li>
@@ -188,7 +225,7 @@ include BASE_PATH . '/include/css.php';
       <div class="offcanvas offcanvas-start" tabindex="-1" id="mobileMenu"
         aria-labelledby="mobileMenuLabel">
         <div class="offcanvas-header border-bottom">
-            <a href="<?= SITE_URL ?>"><img src="<?= SITE_URL ?>assets/image/crm_logo.png" alt="Logo" class="logo"></a>
+            <a href="<?= SITE_URL ?>"><img src="<?= $headerCompanyLogo ?>" alt="Logo" class="logo"></a>
           <button type="button"
             class="btn-close"
             data-bs-dismiss="offcanvas"

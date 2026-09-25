@@ -57,6 +57,9 @@ RewriteRule ^team-person/?$ admin/setting/team-person/list.php [L]
 RewriteRule ^team-person/add/?$ admin/setting/team-person/form.php [L]
 RewriteRule ^team-person/edit/([^/]+)/?$ admin/setting/team-person/form.php?id=$1 [L]
 
+RewriteRule ^profile/?$ profile.php [L]
+RewriteRule ^profile/edit/?$ profile.php?action=edit [L]
+
 RewriteCond %{REQUEST_FILENAME} -f [OR]
 RewriteCond %{REQUEST_FILENAME} -d
 RewriteRule ^ - [L]

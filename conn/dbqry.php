@@ -47,24 +47,6 @@ function db_rows($sql)
     return $rows;
 }
 
-
-/**
- * Insert / Update / Delete
- */
-function db_execute($sql)
-{
-    global $conn;
-
-    $result = mysqli_query($conn, $sql);
-
-    if (!$result) {
-        die("Database Query Error: " . mysqli_error($conn));
-    }
-
-    return $result;
-}
-
-
 /**
  * Last inserted ID
  */
