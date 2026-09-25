@@ -304,3 +304,217 @@
 .data-table td[data-field="email"] {
     text-transform: none !important;
 }
+
+/* Step Wizard Navigation Styles */
+.wizard-steps-nav {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: relative;
+    margin-bottom: 2rem;
+    padding: 0 10px;
+}
+
+.wizard-steps-nav::before {
+    content: '';
+    position: absolute;
+    top: 22px;
+    left: 40px;
+    right: 40px;
+    height: 3px;
+    background: #e9ecef;
+    z-index: 1;
+}
+
+.wizard-step-item {
+    position: relative;
+    z-index: 2;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    background: transparent;
+    border: none;
+    padding: 0;
+    cursor: pointer;
+    text-decoration: none;
+}
+
+.wizard-step-circle {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    background: #fff;
+    border: 3px solid #dee2e6;
+    color: #6c757d;
+    font-weight: 700;
+    font-size: 15px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.25s ease-in-out;
+}
+
+.wizard-step-item.active .wizard-step-circle {
+    background: #117087;
+    border-color: #117087;
+    color: #ffffff;
+    box-shadow: 0 0 0 4px rgba(17, 112, 135, 0.2);
+}
+
+.wizard-step-item.completed .wizard-step-circle {
+    background: #198754;
+    border-color: #198754;
+    color: #ffffff;
+}
+
+.wizard-step-label {
+    margin-top: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    color: #6c757d;
+    text-align: center;
+    white-space: nowrap;
+}
+
+.wizard-step-item.active .wizard-step-label {
+    color: #117087;
+}
+
+.wizard-step-item.completed .wizard-step-label {
+    color: #198754;
+}
+
+@media (max-width: 768px) {
+    .wizard-steps-nav {
+        overflow-x: auto;
+        padding-bottom: 10px;
+        justify-content: flex-start;
+        gap: 20px;
+    }
+
+    .wizard-steps-nav::before {
+        display: none;
+    }
+}
+
+/* Dashboard Statistics & Chart Common Styles */
+.dashboard-stat-col-5 {
+    min-width: 120px;
+}
+
+.dashboard-stat-col-4 {
+    min-width: 125px;
+}
+
+.dashboard-stat-col-6 {
+    min-width: 115px;
+}
+
+/* Dashboard Metric Number Count Font Size (1rem) */
+.dashboard-stat-value,
+.dashboard-stat-col-4 h4,
+.dashboard-stat-col-4 h5,
+.dashboard-stat-col-5 h4,
+.dashboard-stat-col-5 h5,
+.dashboard-stat-col-6 h4,
+.dashboard-stat-col-6 h5,
+#stat_total_visit,
+#stat_completed_visit,
+#stat_pending_visit {
+    font-size: 1rem !important;
+}
+
+.dashboard-chart-box-280 {
+    min-height: 280px;
+}
+
+.dashboard-chart-box-250 {
+    min-height: 250px;
+}
+
+.dashboard-breakdown-chart {
+    min-width: 200px;
+}
+
+.dashboard-breakdown-content {
+    min-width: 220px;
+}
+
+.indicator-dot {
+    display: inline-block;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+}
+
+.indicator-dot.dot-primary {
+    background-color: #0d6efd;
+}
+
+.indicator-dot.dot-success {
+    background-color: #198754;
+}
+
+.indicator-dot.dot-info {
+    background-color: #0dcaf0;
+}
+
+.indicator-dot.dot-warning {
+    background-color: #ffc107;
+}
+
+.indicator-dot.dot-danger {
+    background-color: #dc3545;
+}
+
+.indicator-dot.dot-purple {
+    background-color: #6f42c1;
+}
+
+.indicator-dot.dot-secondary {
+    background-color: #6c757d;
+}
+
+/* Dashboard Global Search Bar (1 Line Layout & Responsive) */
+.dashboard-search-container {
+    display: flex;
+    align-items: flex-end;
+    gap: 12px;
+    width: 100%;
+}
+
+.dashboard-search-title {
+    flex-shrink: 0;
+    margin-bottom: 7px;
+}
+
+.dashboard-search-item {
+    flex: 1 1 0px;
+    width: 0;
+    min-width: 150px;
+}
+
+.dashboard-search-item .form-control,
+.dashboard-search-item .form-select {
+    width: 100%;
+}
+
+
+.dashboard-search-actions {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 1px;
+}
+
+@media (max-width: 1200px) {
+    .dashboard-search-scroll {
+        overflow-x: auto;
+        padding-bottom: 6px;
+    }
+
+    .dashboard-search-container {
+        min-width: 860px;
+    }
+}
