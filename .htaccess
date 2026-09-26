@@ -1,6 +1,7 @@
 RewriteEngine On
 
-RewriteBase /armor/
+# RewriteBase is not required for subdomain root
+RewriteBase /
 
 # Login
 RewriteRule ^login/?$ login.php [L,QSA]
@@ -8,8 +9,7 @@ RewriteRule ^login/?$ login.php [L,QSA]
 # Logout
 RewriteRule ^logout/?$ logout.php [L,QSA]
 
-# master route
-
+# Master Route
 RewriteRule ^category/?$ admin/master/category/list.php [L]
 RewriteRule ^sub-category/?$ admin/master/sub-category/list.php [L]
 RewriteRule ^department/?$ admin/master/department/list.php [L]
@@ -24,6 +24,8 @@ RewriteRule ^followup-reason/?$ admin/master/followup-reason/list.php [L]
 RewriteRule ^industry-type/?$ admin/master/industry-type/list.php [L]
 RewriteRule ^company-type/?$ admin/master/company-type/list.php [L]
 RewriteRule ^brand/?$ admin/master/brand/list.php [L]
+
+# Sub Master
 RewriteRule ^country/?$ admin/submaster/country/list.php [L]
 RewriteRule ^state/?$ admin/submaster/state/list.php [L]
 RewriteRule ^city/?$ admin/submaster/city/list.php [L]
@@ -39,27 +41,33 @@ RewriteRule ^visit-purpose/?$ admin/submaster/visit-purpose/list.php [L]
 RewriteRule ^terms-condition/?$ admin/submaster/terms-condition/list.php [L]
 RewriteRule ^zone/?$ admin/submaster/zone/list.php [L]
 
-# Module list
+# Module
 RewriteRule ^module/?$ admin/setting/module/list.php [L]
 
+# Plan
 RewriteRule ^plan/?$ admin/setting/plan/list.php [L]
 RewriteRule ^plan/add/?$ admin/setting/plan/form.php [L]
 RewriteRule ^plan/edit/([^/]+)/?$ admin/setting/plan/form.php?id=$1 [L]
 
+# Company
 RewriteRule ^company/?$ admin/setting/company/list.php [L]
 RewriteRule ^company/add/?$ admin/setting/company/form.php [L]
 RewriteRule ^company/edit/([^/]+)/?$ admin/setting/company/form.php?id=$1 [L]
 
+# Team Role
 RewriteRule ^teamrole/?$ admin/setting/teamrole/list.php [L]
 RewriteRule ^teamrole/setting/([^/]+)/?$ admin/setting/teamrole/setting.php?id=$1 [L]
 
+# Team Person
 RewriteRule ^team-person/?$ admin/setting/team-person/list.php [L]
 RewriteRule ^team-person/add/?$ admin/setting/team-person/form.php [L]
 RewriteRule ^team-person/edit/([^/]+)/?$ admin/setting/team-person/form.php?id=$1 [L]
 
+# Profile
 RewriteRule ^profile/?$ profile.php [L]
 RewriteRule ^profile/edit/?$ profile.php?action=edit [L]
 
+# Existing Files / Folders
 RewriteCond %{REQUEST_FILENAME} -f [OR]
 RewriteCond %{REQUEST_FILENAME} -d
 RewriteRule ^ - [L]
