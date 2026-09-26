@@ -1,8 +1,5 @@
 RewriteEngine On
 
-# RewriteBase for local subfolder
-RewriteBase /armor/
-
 # Login
 RewriteRule ^login/?$ login.php [L,QSA]
 
