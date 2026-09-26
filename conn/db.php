@@ -14,7 +14,7 @@ define('BASE_PATH', dirname(__DIR__));
 define('DB_HOST', 'localhost');
 define('DB_USER', 'root');
 define('DB_PASS', '');
-define('DB_DATABASE', 'armor_crm');
+define('DB_DATABASE', 'armor_crm_live');
 
 $conn = mysqli_connect(
     DB_HOST,

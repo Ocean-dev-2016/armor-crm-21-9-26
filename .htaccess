@@ -1,7 +1,7 @@
 RewriteEngine On
 
-# RewriteBase is not required for subdomain root
-RewriteBase /
+# RewriteBase for local subfolder
+RewriteBase /armor/
 
 # Login
 RewriteRule ^login/?$ login.php [L,QSA]
