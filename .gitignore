@@ -1,0 +1,7 @@
+# Database configuration
+conn/db.php
+db.php
+
+# Uploads directory
+/uploads/
+uploads/
