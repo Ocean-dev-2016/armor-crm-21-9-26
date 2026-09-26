@@ -5,3 +5,6 @@ db.php
 # Uploads directory
 /uploads/
 uploads/
+
+# Apache configuration
+.htaccess
