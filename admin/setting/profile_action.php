@@ -62,63 +62,123 @@ if ($action === 'update_logo') {
         exit;
     }
 
-    $companyId = (int)($user['company_id'] ?? 0);
+    $uploadDir = BASE_PATH . '/uploads/profile/';
+    $newFileName = upload_and_convert_to_webp($_FILES['logo_image'], $uploadDir, 'profile', 85);
 
-    // if ($companyId > 0) {
-    //     // Upload to uploads/company/
-    //     $uploadDir = BASE_PATH . '/uploads/company/';
-    //     if (!is_dir($uploadDir)) {
-    //         mkdir($uploadDir, 0777, true);
-    //     }
-
-    //     $newFileName = 'header_' . time() . '_' . rand(1000, 9999) . '.' . $fileExtension;
-    //     $destPath = $uploadDir . $newFileName;
-
-    //     if (move_uploaded_file($fileTmpPath, $destPath)) {
-    //         // Delete old file if exists
-    //         $comp = db_row("SELECT header_image FROM company WHERE id = $companyId LIMIT 1");
-    //         if (!empty($comp['header_image']) && file_exists($uploadDir . $comp['header_image'])) {
-    //             @unlink($uploadDir . $comp['header_image']);
-    //         }
-
-    //         db_query("UPDATE company SET header_image = '$newFileName', updated_at = NOW() WHERE id = $companyId");
-
-    //         echo json_encode([
-    //             'status' => true,
-    //             'message' => 'Company logo updated successfully.'
-    //         ]);
-    //         exit;
-    //     }
-    // } else {
-        // Superadmin or user without company: update user profile_img
-        $uploadDir = BASE_PATH . '/uploads/profile/';
-        if (!is_dir($uploadDir)) {
-            mkdir($uploadDir, 0777, true);
+    if ($newFileName) {
+        if (!empty($user['profile_img']) && file_exists($uploadDir . $user['profile_img'])) {
+            @unlink($uploadDir . $user['profile_img']);
         }
 
-        $newFileName = 'profile_' . time() . '_' . rand(1000, 9999) . '.' . $fileExtension;
-        $destPath = $uploadDir . $newFileName;
+        db_query("UPDATE users SET profile_img = '$newFileName', updated_at = NOW() WHERE id = $userId");
 
-        if (move_uploaded_file($fileTmpPath, $destPath)) {
-            if (!empty($user['profile_img']) && file_exists($uploadDir . $user['profile_img'])) {
-                @unlink($uploadDir . $user['profile_img']);
-            }
-
-            db_query("UPDATE users SET profile_img = '$newFileName', updated_at = NOW() WHERE id = $userId");
-
-            echo json_encode([
-                'status' => true,
-                'message' => 'Profile image updated successfully.'
-            ]);
-            exit;
-        }
-    //}
+        echo json_encode([
+            'status' => true,
+            'message' => 'Profile image updated successfully.'
+        ]);
+        exit;
+    }
 
     echo json_encode([
         'status' => false,
         'message' => 'Failed to upload image. Please try again.'
     ]);
     exit;
+}
+
+// 1.1 UPDATE SUPERADMIN BRANDING (Login Logo, Header Logo, Favicon)
+if ($action === 'update_superadmin_branding') {
+    if (($user['user_type'] ?? '') !== 'superadmin') {
+        echo json_encode([
+            'status' => false,
+            'message' => 'Unauthorized access.'
+        ]);
+        exit;
+    }
+
+    $uploadDir = BASE_PATH . '/uploads/system/';
+    $allowedExtensions = ['jpg', 'jpeg', 'png', 'webp', 'ico'];
+    $updates = [];
+
+    // Helper for processing branding file upload
+    $processUpload = function($fileKey, $prefix, $currentVal, $removeKey) use ($uploadDir, $allowedExtensions, &$updates) {
+        $shouldRemove = isset($_POST[$removeKey]) && $_POST[$removeKey] == '1';
+
+        if (isset($_FILES[$fileKey]) && $_FILES[$fileKey]['error'] === UPLOAD_ERR_OK) {
+            $origName = $_FILES[$fileKey]['name'];
+            $fileSize = $_FILES[$fileKey]['size'];
+            $ext = strtolower(pathinfo($origName, PATHINFO_EXTENSION));
+
+            if (!in_array($ext, $allowedExtensions, true)) {
+                return "Invalid file type for $prefix. Allowed: JPG, PNG, WEBP, ICO.";
+            }
+            if ($fileSize > 5 * 1024 * 1024) {
+                return "File size for $prefix cannot exceed 5MB.";
+            }
+
+            $newFileName = upload_and_convert_to_webp($_FILES[$fileKey], $uploadDir, $prefix, 85);
+            if ($newFileName) {
+                // Delete old file if present
+                if (!empty($currentVal) && file_exists($uploadDir . $currentVal)) {
+                    @unlink($uploadDir . $currentVal);
+                }
+                $updates[$prefix] = $newFileName;
+            } else {
+                return "Failed to save uploaded file for $prefix.";
+            }
+        } elseif ($shouldRemove) {
+            if (!empty($currentVal) && file_exists($uploadDir . $currentVal)) {
+                @unlink($uploadDir . $currentVal);
+            }
+            $updates[$prefix] = null;
+        }
+        return true;
+    };
+
+    $err = $processUpload('login_logo', 'login_logo', $user['login_logo'] ?? '', 'remove_login_logo');
+    if ($err !== true) {
+        echo json_encode(['status' => false, 'message' => $err]);
+        exit;
+    }
+
+    $err = $processUpload('header_logo', 'header_logo', $user['header_logo'] ?? '', 'remove_header_logo');
+    if ($err !== true) {
+        echo json_encode(['status' => false, 'message' => $err]);
+        exit;
+    }
+
+    $err = $processUpload('favicon', 'favicon', $user['favicon'] ?? '', 'remove_favicon');
+    if ($err !== true) {
+        echo json_encode(['status' => false, 'message' => $err]);
+        exit;
+    }
+
+    if (!empty($updates)) {
+        $setParts = [];
+        foreach ($updates as $col => $val) {
+            if ($val === null) {
+                $setParts[] = "$col = NULL";
+            } else {
+                $escaped = db_escape($val);
+                $setParts[] = "$col = '$escaped'";
+            }
+        }
+        $setParts[] = "updated_at = NOW()";
+        $setSql = implode(', ', $setParts);
+        db_query("UPDATE users SET $setSql WHERE id = $userId");
+
+        echo json_encode([
+            'status' => true,
+            'message' => 'Branding settings updated successfully.'
+        ]);
+        exit;
+    } else {
+        echo json_encode([
+            'status' => true,
+            'message' => 'No changes made.'
+        ]);
+        exit;
+    }
 }
 
 // 2. UPDATE ACCOUNT SETTINGS (Profile Name & Passwords)

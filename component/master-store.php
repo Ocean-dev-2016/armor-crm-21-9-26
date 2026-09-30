@@ -215,14 +215,13 @@ if (!empty($uniqueConditions)) {
 $imageName = null;
 if ($hasImage) {
     if (isset($_FILES[$imageField]) && $_FILES[$imageField]['error'] === UPLOAD_ERR_OK) {
-        $fileTmpPath = $_FILES[$imageField]['tmp_name'];
         $fileName    = $_FILES[$imageField]['name'];
         $fileSize    = $_FILES[$imageField]['size'];
         $fileNameCmps = explode(".", $fileName);
         $fileExtension = strtolower(end($fileNameCmps));
 
         $allowedfileExtensions = ['jpg', 'jpeg', 'png', 'webp'];
-        if (!in_array($fileExtension, $allowedfileExtensions)) {
+        if (!in_array($fileExtension, $allowedfileExtensions, true)) {
             $response['message'] = 'Only image files (jpg, jpeg, png, webp) are allowed.';
             echo json_encode($response);
             exit;
@@ -234,17 +233,14 @@ if ($hasImage) {
             exit;
         }
 
-        $newFileName = time() . '_' . uniqid() . '.' . $fileExtension;
         $uploadFileDir = BASE_PATH . '/uploads/' . trim($uploadFolder, '/') . '/';
-        if (!is_dir($uploadFileDir)) {
-            mkdir($uploadFileDir, 0777, true);
-        }
-        $dest_path = $uploadFileDir . $newFileName;
+        $prefix = preg_replace('/[^a-zA-Z0-9_]/', '', $tbl);
+        $newFileName = upload_and_convert_to_webp($_FILES[$imageField], $uploadFileDir, $prefix, 85);
 
-        if (move_uploaded_file($fileTmpPath, $dest_path)) {
+        if ($newFileName) {
             $imageName = $newFileName;
         } else {
-            $response['message'] = 'There was an error moving the uploaded file.';
+            $response['message'] = 'There was an error processing and converting the uploaded image.';
             echo json_encode($response);
             exit;
         }

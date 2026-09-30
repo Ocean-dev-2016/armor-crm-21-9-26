@@ -2,6 +2,13 @@
 include 'include/css.php';
 include 'component/spinner.php';
 include 'component/alert.php';
+
+// Superadmin Login Logo fallback
+$loginLogoSrc = SITE_URL . 'assets/image/crm_logo.png';
+$loginBranding = db_row("SELECT login_logo FROM users WHERE user_type = 'superadmin' AND login_logo IS NOT NULL ORDER BY id ASC LIMIT 1");
+if (!empty($loginBranding['login_logo']) && file_exists(BASE_PATH . '/uploads/system/' . $loginBranding['login_logo'])) {
+    $loginLogoSrc = SITE_URL . 'uploads/system/' . $loginBranding['login_logo'];
+}
 ?>
 
 <body class="bg-light d-flex align-items-center justify-content-center h-100vh">
@@ -11,7 +18,7 @@ include 'component/alert.php';
         <div class="card border-0 shadow-lg p-4">
           <div class="card-body">
             <div class="text-center mb-4">
-              <img src="<?= SITE_URL ?>assets/image/logo.png" alt="Logo" class="logo">
+              <img src="<?= $loginLogoSrc ?>" alt="Logo" class="logo">
 
               <h5 class="mt-3">Login</h5>
             </div>

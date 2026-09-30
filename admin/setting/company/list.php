@@ -9,7 +9,7 @@ $showAdd = hasPermission('company', 'adds');
 $addType = 'redirect';
 $addUrl  = SITE_URL . 'company/add';
 $breadcrumbType = 'list';
-$fields = 'name:Name';
+$fields = 'name:Name, person_name:Person Name, mobile_no:Mobile No, email:Email, header_image:Header Image, app_logo:App Logo, favicon:Favicon';
 $module = 'company';
 $tbl = 'company';
 include BASE_PATH . '/component/breadcrumb.php';
