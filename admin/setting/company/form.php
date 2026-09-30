@@ -615,6 +615,35 @@ include BASE_PATH . '/component/breadcrumb.php';
                                         </div>
                                     </div>
                                 </div>
+
+                                <!-- Login Logo -->
+                                <div class="col-lg-6 col-md-12">
+                                    <div class="card border h-100">
+                                        <div class="card-body">
+                                            <label class="form-label fw-bold">Login Logo <small class="text-muted">(Dedicated Logo on Login Screen / PNG, WEBP)</small></label>
+                                            <div class="input-group">
+                                                <input type="text" class="form-control bg-light" id="loginLogoNameDisplay" 
+                                                    value="<?= !empty($company['login_logo']) ? htmlspecialchars($company['login_logo']) : '' ?>" 
+                                                    placeholder="No File Selected" readonly>
+                                                <input type="file" name="login_logo" id="loginLogoInput" class="d-none" accept="image/png, image/jpeg, image/jpg, image/webp">
+                                                <button class="btn btn-select-file" type="button" id="selectLoginLogoBtn">
+                                                    SELECT FILE
+                                                </button>
+                                            </div>
+                                            <input type="hidden" name="remove_login_logo" id="remove_login_logo" value="0">
+                                            <?php 
+                                                $hasLoginLogo = !empty($company['login_logo']) && file_exists(BASE_PATH . '/uploads/company/' . $company['login_logo']);
+                                                $loginLogoUrl = $hasLoginLogo ? SITE_URL . 'uploads/company/' . $company['login_logo'] : '';
+                                            ?>
+                                            <div id="loginLogoPreviewContainer" class="image-preview-wrapper <?= $hasLoginLogo ? '' : 'd-none' ?>">
+                                                <img id="loginLogoPreview" src="<?= $loginLogoUrl ?>" alt="Login Logo Preview" class="image-preview-thumb">
+                                                <button type="button" class="btn btn-sm btn-danger btn-remove-preview" id="removeLoginLogoBtn" title="Remove image">
+                                                    <i data-lucide="x" class="fs-12"></i>
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
 
@@ -829,6 +858,7 @@ include BASE_PATH . '/include/footer.php';
         bindImageUploader('selectFooterImageBtn', 'footerImageInput', 'footerImageNameDisplay', 'footerPreview', 'footerPreviewContainer', 'removeFooterBtn', 'remove_footer_image');
         bindImageUploader('selectFaviconBtn', 'faviconInput', 'faviconNameDisplay', 'faviconPreview', 'faviconPreviewContainer', 'removeFaviconBtn', 'remove_favicon');
         bindImageUploader('selectAppLogoBtn', 'appLogoInput', 'appLogoNameDisplay', 'appLogoPreview', 'appLogoPreviewContainer', 'removeAppLogoBtn', 'remove_app_logo');
+        bindImageUploader('selectLoginLogoBtn', 'loginLogoInput', 'loginLogoNameDisplay', 'loginLogoPreview', 'loginLogoPreviewContainer', 'removeLoginLogoBtn', 'remove_login_logo');
 
         // Strong password method
         $.validator.addMethod("strongPassword", function(value, element) {

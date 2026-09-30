@@ -232,11 +232,13 @@ $headerImageName = handleCompanyImageUpload('header_image', 'header', $uploadDir
 $footerImageName = handleCompanyImageUpload('footer_image', 'footer', $uploadDir, $response);
 $faviconName     = handleCompanyImageUpload('favicon', 'favicon', $uploadDir, $response);
 $appLogoName     = handleCompanyImageUpload('app_logo', 'applogo', $uploadDir, $response);
+$loginLogoName   = handleCompanyImageUpload('login_logo', 'loginlogo', $uploadDir, $response);
 
-$removeHeader = (isset($_POST['remove_header_image']) && $_POST['remove_header_image'] == '1');
-$removeFooter = (isset($_POST['remove_footer_image']) && $_POST['remove_footer_image'] == '1');
-$removeFavicon = (isset($_POST['remove_favicon']) && $_POST['remove_favicon'] == '1');
-$removeAppLogo = (isset($_POST['remove_app_logo']) && $_POST['remove_app_logo'] == '1');
+$removeHeader    = (isset($_POST['remove_header_image']) && $_POST['remove_header_image'] == '1');
+$removeFooter    = (isset($_POST['remove_footer_image']) && $_POST['remove_footer_image'] == '1');
+$removeFavicon   = (isset($_POST['remove_favicon']) && $_POST['remove_favicon'] == '1');
+$removeAppLogo   = (isset($_POST['remove_app_logo']) && $_POST['remove_app_logo'] == '1');
+$removeLoginLogo = (isset($_POST['remove_login_logo']) && $_POST['remove_login_logo'] == '1');
 
 $prefixEsc = db_escape($prefix);
 $gstEsc = db_escape($gst);
@@ -275,7 +277,7 @@ $bgLightColorEsc = db_escape($bg_light_color);
 
 $ip = getClientIp();
 if ($id > 0) {
-    $existing = db_row("SELECT header_image, footer_image, favicon, app_logo FROM $tbl WHERE id = " . (int)$id . " LIMIT 1");
+    $existing = db_row("SELECT header_image, footer_image, favicon, app_logo, login_logo FROM $tbl WHERE id = " . (int)$id . " LIMIT 1");
 
     $headerImageSql = "";
     if ($headerImageName !== null) {
@@ -329,6 +331,19 @@ if ($id > 0) {
         $appLogoSql = ", app_logo = NULL";
     }
 
+    $loginLogoSql = "";
+    if ($loginLogoName !== null) {
+        if (!empty($existing['login_logo']) && file_exists($uploadDir . $existing['login_logo'])) {
+            unlink($uploadDir . $existing['login_logo']);
+        }
+        $loginLogoSql = ", login_logo = '$loginLogoName'";
+    } elseif ($removeLoginLogo) {
+        if (!empty($existing['login_logo']) && file_exists($uploadDir . $existing['login_logo'])) {
+            unlink($uploadDir . $existing['login_logo']);
+        }
+        $loginLogoSql = ", login_logo = NULL";
+    }
+
     $sql = "UPDATE $tbl SET 
                 company_type_id = '$company_type_id',
                 name = '$nameEsc',
@@ -366,7 +381,8 @@ if ($id > 0) {
                 $headerImageSql
                 $footerImageSql
                 $faviconSql
-                $appLogoSql,
+                $appLogoSql
+                $loginLogoSql,
                 updated_by = '$userId',
                 updated_at = NOW() 
             WHERE id = " . (int) $id;
@@ -380,10 +396,11 @@ if ($id > 0) {
     $footerVal = $footerImageName !== null ? "'$footerImageName'" : "NULL";
     $faviconVal = $faviconName !== null ? "'$faviconName'" : "NULL";
     $appLogoVal = $appLogoName !== null ? "'$appLogoName'" : "NULL";
+    $loginLogoVal = $loginLogoName !== null ? "'$loginLogoName'" : "NULL";
 
     $sql = "INSERT INTO $tbl (
                 company_type_id, name, prefix, gst, indiamart_api_key, pan_card, 
-                header_image, footer_image, favicon, app_logo, address, bank_details, terms_conditions,
+                header_image, footer_image, favicon, app_logo, login_logo, address, bank_details, terms_conditions,
                 person_name, mobile_no, email, password, country_id, state_id, city_id, plan_id,
                 order_prefix, order_title, order_view_color,
                 quotation_prefix, quotation_title, quotation_view_color,
@@ -394,7 +411,7 @@ if ($id > 0) {
                 created_by, created_at, updated_at
             ) VALUES (
                 '$company_type_id', '$nameEsc', '$prefixEsc', '$gstEsc', '$indiamartEsc', '$panCardEsc',
-                $headerVal, $footerVal, $faviconVal, $appLogoVal, '$addressEsc', '$bankDetailsEsc', '$termsConditionsEsc',
+                $headerVal, $footerVal, $faviconVal, $appLogoVal, $loginLogoVal, '$addressEsc', '$bankDetailsEsc', '$termsConditionsEsc',
                 '$personNameEsc', '$mobileNoEsc', '$emailEsc', '$password', '$countryIdEsc', '$stateIdEsc', '$cityIdEsc', '$planIdEsc',
                 '$orderPrefixEsc', '$orderTitleEsc', '$orderColorEsc',
                 '$quotationPrefixEsc', '$quotationTitleEsc', '$quotationColorEsc',

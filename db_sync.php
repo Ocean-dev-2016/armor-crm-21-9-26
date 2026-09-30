@@ -93,6 +93,21 @@ if (tableExists('users')) {
     }
 }
 
+// 4. Check & Add login_logo column to company table
+if (tableExists('company')) {
+    if (!columnExists('company', 'login_logo')) {
+        $q = mysqli_query($conn, "ALTER TABLE `company` ADD COLUMN `login_logo` VARCHAR(255) NULL AFTER `app_logo`");
+        if ($q) {
+            echo '<div class="log-item log-success">✓ Added `login_logo` column to `company` table successfully.</div>';
+        } else {
+            echo '<div class="log-item log-error">✗ Failed to add `login_logo` to `company`: ' . mysqli_error($conn) . '</div>';
+        }
+    } else {
+        echo '<div class="log-item log-info">ℹ `company`.`login_logo` column already exists.</div>';
+    }
+}
+
+
 // Ensure uploads/system directory exists
 $systemUploadDir = __DIR__ . '/uploads/system/';
 if (!is_dir($systemUploadDir)) {
