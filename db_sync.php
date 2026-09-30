@@ -1,4 +1,10 @@
 
+<?php
+require_once __DIR__ . '/conn/db.php';
+require_once __DIR__ . '/conn/dbqry.php';
+
+header('Content-Type: text/html; charset=utf-8');
+?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
