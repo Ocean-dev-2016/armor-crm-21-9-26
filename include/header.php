@@ -33,15 +33,26 @@ if (!empty($headerUser['profile_img']) && file_exists(BASE_PATH . '/uploads/prof
   $headerUserProfileImg = SITE_URL . 'uploads/profile/' . $headerUser['profile_img'];
 }
 
+// Fetch Superadmin Branding (System logos fallback)
+$superadminBranding = db_row("SELECT header_logo, favicon FROM users WHERE user_type = 'superadmin' AND (header_logo IS NOT NULL OR favicon IS NOT NULL) ORDER BY id ASC LIMIT 1");
+
 // Company Header Logo (with default fallback)
 $defaultCompanyLogo = SITE_URL . 'assets/image/crm_logo.png';
+if (!empty($superadminBranding['header_logo']) && file_exists(BASE_PATH . '/uploads/system/' . $superadminBranding['header_logo'])) {
+  $defaultCompanyLogo = SITE_URL . 'uploads/system/' . $superadminBranding['header_logo'];
+}
+
 $headerCompanyLogo = $defaultCompanyLogo;
 if (!empty($headerCompany['header_image']) && file_exists(BASE_PATH . '/uploads/company/' . $headerCompany['header_image'])) {
   $headerCompanyLogo = SITE_URL . 'uploads/company/' . $headerCompany['header_image'];
 }
 
 // Company Favicon (with default fallback)
-$headerFavicon = $defaultCompanyLogo;
+$defaultFavicon = $defaultCompanyLogo;
+if (!empty($superadminBranding['favicon']) && file_exists(BASE_PATH . '/uploads/system/' . $superadminBranding['favicon'])) {
+  $defaultFavicon = SITE_URL . 'uploads/system/' . $superadminBranding['favicon'];
+}
+$headerFavicon = $defaultFavicon;
 if (!empty($headerCompany['favicon']) && file_exists(BASE_PATH . '/uploads/company/' . $headerCompany['favicon'])) {
   $headerFavicon = SITE_URL . 'uploads/company/' . $headerCompany['favicon'];
 } elseif ($headerCompanyLogo !== $defaultCompanyLogo) {
@@ -124,8 +135,49 @@ foreach ($menuTree as $key => $item) {
   }
 }
 
+// Prepare searchable menu list for Header Search
+$searchableMenus = [];
+foreach ($menuTree as $mItem) {
+  if (!empty($mItem['sub_menu'])) {
+    foreach ($mItem['sub_menu'] as $sub) {
+      $searchableMenus[] = [
+        'name'   => $sub['name'],
+        'parent' => $mItem['name'],
+        'route'  => SITE_URL . ltrim($sub['route'], '/'),
+        'icon'   => $sub['icon'] ?? $mItem['icon'] ?? 'circle'
+      ];
+    }
+  } else {
+    $searchableMenus[] = [
+      'name'   => $mItem['name'],
+      'parent' => '',
+      'route'  => SITE_URL . ltrim($mItem['route'], '/'),
+      'icon'   => $mItem['icon'] ?? 'circle'
+    ];
+  }
+}
+
+if ($isSuperadmin) {
+  $superMenus = [
+    ['name' => 'Module', 'parent' => 'Main Setting', 'route' => SITE_URL . 'module', 'icon' => 'box'],
+    ['name' => 'Plan', 'parent' => 'Main Setting', 'route' => SITE_URL . 'plan', 'icon' => 'layers'],
+    ['name' => 'Company Type', 'parent' => 'Main Setting', 'route' => SITE_URL . 'company-type', 'icon' => 'briefcase'],
+    ['name' => 'Company', 'parent' => 'Main Setting', 'route' => SITE_URL . 'company', 'icon' => 'building-2'],
+    ['name' => 'Team Role', 'parent' => 'Main Setting', 'route' => SITE_URL . 'teamrole', 'icon' => 'shield'],
+    ['name' => 'Team Person', 'parent' => 'Main Setting', 'route' => SITE_URL . 'team-person', 'icon' => 'users']
+  ];
+  foreach ($superMenus as $sm) {
+    $searchableMenus[] = $sm;
+  }
+}
+
+$headerDisplayName = !empty($headerUser['name']) ? $headerUser['name'] : ($_SESSION['name'] ?? ($_SESSION['username'] ?? 'User'));
+
 include BASE_PATH . '/include/css.php';
 ?>
+<script>
+  window.HEADER_SEARCH_MENUS = <?= json_encode($searchableMenus, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP) ?>;
+</script>
 
 <body>
   <div class="main-wrapper">
@@ -141,6 +193,59 @@ include BASE_PATH . '/include/css.php';
           </button>
 
           <a href="<?= SITE_URL ?>"><img src="<?= $headerCompanyLogo ?>" alt="Logo" class="logo"></a>
+        </div>
+
+        <!-- Header Middle: Search Bar & Live User/Date/Time Info -->
+        <div class="header-center-section d-flex align-items-center flex-grow-1 mx-3 gap-3">
+          <!-- Menu Search Box -->
+          <div class="header-search-wrapper position-relative">
+            <div class="input-group header-search-input-group">
+              <span class="input-group-text bg-transparent border-end-0 text-muted ps-3 pe-2">
+                <i data-lucide="search" class="fs-16"></i>
+              </span>
+              <input 
+                type="text" 
+                id="headerMenuSearchInput" 
+                class="form-control border-start-0 border-end-0 ps-1 pe-2 shadow-none" 
+                placeholder="Search menu (type 3+ chars)..." 
+                autocomplete="off">
+              <span class="input-group-text bg-transparent border-start-0 text-muted pe-3 ps-1 header-search-clear-btn" id="headerSearchClearBtn">
+                <i data-lucide="x" class="fs-15"></i>
+              </span>
+            </div>
+
+            <!-- Search Results Dropdown -->
+            <div id="headerSearchResults" class="header-search-dropdown shadow-lg border rounded-3 p-2 bg-white">
+              <!-- Dynamic items injected here via JS -->
+            </div>
+          </div>
+
+          <!-- Logged-in User Info & Live Clock -->
+          <div class="header-user-meta ms-auto d-none d-md-flex align-items-center gap-2">
+            <!-- User Name Badge -->
+            <div class="header-meta-pill header-user-pill d-flex align-items-center gap-2 px-2 py-1 rounded-pill">
+              <i data-lucide="user" class="fs-16 text-primary"></i>
+              <span class="fw-semibold text-truncate header-user-name" title="<?= htmlspecialchars($headerDisplayName) ?>">
+                <?= htmlspecialchars($headerDisplayName) ?>
+              </span>
+            </div>
+
+            <!-- Current Date -->
+            <div class="header-meta-pill header-date-pill d-none d-lg-flex align-items-center gap-2 px-2 py-1 rounded-pill">
+              <i data-lucide="calendar" class="fs-16 text-info"></i>
+              <span id="headerLiveDate" class="fw-medium">
+                <?= date('d M Y') ?>
+              </span>
+            </div>
+
+            <!-- Real-time Clock -->
+            <div class="header-meta-pill header-clock-pill d-flex align-items-center gap-2 px-2 py-1 rounded-pill">
+              <i data-lucide="clock" class="fs-16 text-warning"></i>
+              <span id="headerLiveClock" class="fw-semibold">
+                <?= date('h:i:s A') ?>
+              </span>
+            </div>
+          </div>
         </div>
 
         <div class="d-flex align-items-center gap-3">

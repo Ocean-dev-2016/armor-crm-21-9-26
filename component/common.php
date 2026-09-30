@@ -167,6 +167,101 @@ if (isset($_GET['action']) && $_GET['action'] === 'state_base_city') {
     exit;
 }
 
+/**
+ * Check if a column name represents an image
+ */
+function is_image_column($colName) {
+    $colName = strtolower(trim($colName));
+    $exactImageCols = [
+        'image', 'profile_img', 'header_image', 'footer_image', 
+        'app_logo', 'favicon', 'login_logo', 'logo', 'icon', 'photo'
+    ];
+    if (in_array($colName, $exactImageCols, true)) {
+        return true;
+    }
+    return str_ends_with($colName, '_img') 
+        || str_ends_with($colName, '_image') 
+        || str_ends_with($colName, '_logo') 
+        || str_ends_with($colName, '_icon');
+}
+
+/**
+ * Resolve full server path and web URL for an uploaded file
+ */
+function resolve_upload_image($tbl, $filename) {
+    if (empty($filename) || !is_string($filename)) {
+        return null;
+    }
+    $filename = basename(trim($filename));
+    if ($filename === '') {
+        return null;
+    }
+
+    $folderMappings = [
+        'category'     => 'category',
+        'sub_category' => 'subcategory',
+        'product'      => 'product',
+        'company'      => 'company',
+        'users'        => 'profile'
+    ];
+
+    $foldersToTry = [];
+    if (isset($folderMappings[$tbl])) {
+        $foldersToTry[] = $folderMappings[$tbl];
+    }
+    $foldersToTry[] = $tbl;
+    $foldersToTry[] = 'company';
+    $foldersToTry[] = 'system';
+    $foldersToTry[] = 'profile';
+    $foldersToTry[] = 'product';
+    $foldersToTry[] = 'category';
+    $foldersToTry[] = 'subcategory';
+    $foldersToTry = array_unique($foldersToTry);
+
+    foreach ($foldersToTry as $folder) {
+        $fullPath = BASE_PATH . '/uploads/' . $folder . '/' . $filename;
+        if (file_exists($fullPath) && is_file($fullPath)) {
+            return [
+                'full_path' => $fullPath,
+                'url'       => SITE_URL . 'uploads/' . $folder . '/' . $filename,
+                'folder'    => $folder,
+                'filename'  => $filename
+            ];
+        }
+    }
+
+    return null;
+}
+
+/**
+ * Get an image src string suitable for Excel HTML table embedding.
+ * Converts WebP images to PNG base64 data-uri so MS Excel displays them inline.
+ */
+function get_excel_image_src($imgInfo) {
+    if (!$imgInfo || empty($imgInfo['full_path']) || !file_exists($imgInfo['full_path'])) {
+        return '';
+    }
+    $fullPath = $imgInfo['full_path'];
+    $ext = strtolower(pathinfo($fullPath, PATHINFO_EXTENSION));
+
+    if ($ext === 'webp') {
+        if (function_exists('imagecreatefromwebp') && function_exists('imagepng')) {
+            $im = @imagecreatefromwebp($fullPath);
+            if ($im) {
+                ob_start();
+                imagepng($im);
+                $pngData = ob_get_clean();
+                imagedestroy($im);
+                if (!empty($pngData)) {
+                    return 'data:image/png;base64,' . base64_encode($pngData);
+                }
+            }
+        }
+    }
+
+    return $imgInfo['url'];
+}
+
 if (isset($_GET['action']) && $_GET['action'] === 'export_excel') {
     $tbl = isset($_GET['tbl']) ? trim($_GET['tbl']) : '';
     $module = isset($_GET['module']) && trim($_GET['module']) !== '' ? trim($_GET['module']) : $tbl;
@@ -254,10 +349,21 @@ if (isset($_GET['action']) && $_GET['action'] === 'export_excel') {
             ];
         } else {
             $parsedFields[$colName] = [
-                'label' => $colLabel,
+                'label'   => $colLabel,
                 'raw_col' => "t.`$colName`",
-                'type' => ($colName === 'image' || str_ends_with($colName, '_image')) ? 'image' : 'text'
+                'type'    => is_image_column($colName) ? 'image' : 'text'
             ];
+        }
+    }
+
+    // Get list of actual columns in table $tbl to avoid unknown column SQL errors
+    $tableColumns = [];
+    $showCols = db_rows("SHOW COLUMNS FROM `$tbl`");
+    if (!empty($showCols)) {
+        foreach ($showCols as $sc) {
+            if (!empty($sc['Field'])) {
+                $tableColumns[strtolower($sc['Field'])] = true;
+            }
         }
     }
 
@@ -268,8 +374,16 @@ if (isset($_GET['action']) && $_GET['action'] === 'export_excel') {
         if ($isSuperadmin && $hasCompanyCol) {
             $searchConditions[] = "c.name LIKE '%$searchEsc%'";
         }
-        foreach ($parsedFields as $info) {
-            $searchConditions[] = "{$info['raw_col']} LIKE '%$searchEsc%'";
+        foreach ($parsedFields as $cKey => $info) {
+            if ($info['type'] !== 'image') {
+                // If it belongs directly to table t, ensure column exists
+                if (str_starts_with($info['raw_col'], 't.`')) {
+                    if (empty($tableColumns[strtolower($cKey)])) {
+                        continue;
+                    }
+                }
+                $searchConditions[] = "{$info['raw_col']} LIKE '%$searchEsc%'";
+            }
         }
         if (!empty($searchConditions)) {
             $baseConditions[] = "(" . implode(" OR ", $searchConditions) . ")";
@@ -301,12 +415,6 @@ if (isset($_GET['action']) && $_GET['action'] === 'export_excel') {
     header('Pragma: no-cache');
     header('Expires: 0');
 
-    // Image folders map per table
-    $imageUploadFolders = [
-        'category'     => 'category',
-        'sub_category' => 'subcategory',
-        'product'      => 'product'
-    ];
     // Check if any field is an image field
     $hasImageField = false;
     foreach ($parsedFields as $info) {
@@ -408,13 +516,12 @@ if (isset($_GET['action']) && $_GET['action'] === 'export_excel') {
                                 <?php if ($info['type'] === 'image'): ?>
                                     <td class="text-center" style="text-align: center; vertical-align: middle;">
                                         <?php 
-                                            $imgFolder = $imageUploadFolders[$tbl] ?? $tbl;
-                                            $fullPath = BASE_PATH . '/uploads/' . $imgFolder . '/' . $cellVal;
-                                            if (!empty($cellVal) && file_exists($fullPath)): 
-                                                $imgUrl = SITE_URL . 'uploads/' . $imgFolder . '/' . $cellVal;
+                                            $resolved = resolve_upload_image($tbl, $cellVal);
+                                            if ($resolved): 
+                                                $excelSrc = get_excel_image_src($resolved);
                                         ?>
-                                            <a href="<?= $imgUrl ?>" target="_blank" style="text-decoration:none;">
-                                                <img src="<?= $imgUrl ?>" width="40" height="40" border="0" style="display:inline-block; border:1px solid #ccc; width:40px; height:40px;" />
+                                            <a href="<?= $resolved['url'] ?>" target="_blank" style="text-decoration:none;">
+                                                <img src="<?= $excelSrc ?>" width="40" height="40" border="0" style="display:inline-block; border:1px solid #ccc; width:40px; height:40px;" />
                                             </a>
                                         <?php else: ?>
                                             -
@@ -539,10 +646,21 @@ if (isset($_GET['action']) && $_GET['action'] === 'print_data') {
             ];
         } else {
             $parsedFields[$colName] = [
-                'label' => $colLabel,
+                'label'   => $colLabel,
                 'raw_col' => "t.`$colName`",
-                'type' => ($colName === 'image' || str_ends_with($colName, '_image')) ? 'image' : 'text'
+                'type'    => is_image_column($colName) ? 'image' : 'text'
             ];
+        }
+    }
+
+    // Get list of actual columns in table $tbl to avoid unknown column SQL errors
+    $tableColumns = [];
+    $showCols = db_rows("SHOW COLUMNS FROM `$tbl`");
+    if (!empty($showCols)) {
+        foreach ($showCols as $sc) {
+            if (!empty($sc['Field'])) {
+                $tableColumns[strtolower($sc['Field'])] = true;
+            }
         }
     }
 
@@ -553,8 +671,14 @@ if (isset($_GET['action']) && $_GET['action'] === 'print_data') {
         if ($isSuperadmin && $hasCompanyCol) {
             $searchConditions[] = "c.name LIKE '%$searchEsc%'";
         }
-        foreach ($parsedFields as $info) {
+        foreach ($parsedFields as $cKey => $info) {
             if ($info['type'] !== 'image') {
+                // If it belongs directly to table t, ensure column exists
+                if (str_starts_with($info['raw_col'], 't.`')) {
+                    if (empty($tableColumns[strtolower($cKey)])) {
+                        continue;
+                    }
+                }
                 $searchConditions[] = "{$info['raw_col']} LIKE '%$searchEsc%'";
             }
         }
@@ -712,10 +836,10 @@ if (isset($_GET['action']) && $_GET['action'] === 'print_data') {
                                 <?php if ($info['type'] === 'image'): ?>
                                     <td class="text-center">
                                         <?php 
-                                            $imgFolder = $imageUploadFolders[$tbl] ?? $tbl;
-                                            if (!empty($cellVal) && file_exists(BASE_PATH . '/uploads/' . $imgFolder . '/' . $cellVal)): 
+                                            $resolved = resolve_upload_image($tbl, $cellVal);
+                                            if ($resolved): 
                                         ?>
-                                            <img src="<?= SITE_URL ?>uploads/<?= $imgFolder ?>/<?= htmlspecialchars($cellVal) ?>" alt="Img" style="width: 30px; height: 30px; object-fit: cover; border-radius: 3px; border: 1px solid #ccc;">
+                                            <img src="<?= $resolved['url'] ?>" alt="Img" style="width: 30px; height: 30px; object-fit: cover; border-radius: 3px; border: 1px solid #ccc;">
                                         <?php else: ?>
                                             -
                                         <?php endif; ?>

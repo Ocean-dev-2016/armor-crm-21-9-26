@@ -114,6 +114,23 @@ class ThemeManager {
   applyTheme(theme) {
     document.documentElement.setAttribute('data-bs-theme', theme);
     localStorage.setItem('theme', theme);
+
+    // Update switcher icon if present
+    const switcher = document.getElementById('theme-switcher');
+    if (switcher) {
+      const icon = switcher.querySelector('i');
+      if (icon) {
+        if (theme === 'dark') {
+          icon.setAttribute('data-lucide', 'sun');
+        } else {
+          icon.setAttribute('data-lucide', 'moon');
+        }
+        if (window.lucide && typeof window.lucide.createIcons === 'function') {
+          window.lucide.createIcons();
+        }
+      }
+    }
+
     document.dispatchEvent(new CustomEvent('themeChanged', { detail: theme }));
   }
 

@@ -108,6 +108,27 @@ $logoSrc = SITE_URL . 'assets/image/crm_logo.png';
 if (!empty($user['profile_img']) && file_exists(BASE_PATH . '/uploads/profile/' . $user['profile_img'])) {
     $logoSrc = SITE_URL . 'uploads/profile/' . $user['profile_img'];
 }
+
+$isSuperadmin = isset($_SESSION['user_type']) && $_SESSION['user_type'] === 'superadmin';
+
+// Superadmin Branding logos
+$superLoginLogoSrc = SITE_URL . 'assets/image/logo.png';
+$hasSuperLoginLogo = !empty($user['login_logo']) && file_exists(BASE_PATH . '/uploads/system/' . $user['login_logo']);
+if ($hasSuperLoginLogo) {
+    $superLoginLogoSrc = SITE_URL . 'uploads/system/' . $user['login_logo'];
+}
+
+$superHeaderLogoSrc = SITE_URL . 'assets/image/crm_logo.png';
+$hasSuperHeaderLogo = !empty($user['header_logo']) && file_exists(BASE_PATH . '/uploads/system/' . $user['header_logo']);
+if ($hasSuperHeaderLogo) {
+    $superHeaderLogoSrc = SITE_URL . 'uploads/system/' . $user['header_logo'];
+}
+
+$superFaviconSrc = SITE_URL . 'assets/image/crm_logo.png';
+$hasSuperFavicon = !empty($user['favicon']) && file_exists(BASE_PATH . '/uploads/system/' . $user['favicon']);
+if ($hasSuperFavicon) {
+    $superFaviconSrc = SITE_URL . 'uploads/system/' . $user['favicon'];
+}
 ?>
 
 <?php if (!$isEdit): ?>
@@ -152,6 +173,14 @@ if (!empty($user['profile_img']) && file_exists(BASE_PATH . '/uploads/profile/' 
                                 <span>Account & Security</span>
                             </button>
                         </li>
+                        <?php if ($isSuperadmin): ?>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link d-flex align-items-center gap-2 py-2 px-3 fw-medium" id="tab-branding-btn" data-bs-toggle="tab" data-bs-target="#tab-branding" type="button" role="tab">
+                                    <i data-lucide="image" class="fs-16"></i>
+                                    <span>System Branding</span>
+                                </button>
+                            </li>
+                        <?php endif; ?>
                     </ul>
 
                     <div class="d-flex align-items-center gap-2 py-1">
@@ -169,8 +198,8 @@ if (!empty($user['profile_img']) && file_exists(BASE_PATH . '/uploads/profile/' 
                         <!-- TAB 1: Profile Details -->
                         <div class="tab-pane fade show active" id="tab-profile" role="tabpanel">
                             <div class="d-flex flex-wrap align-items-center gap-4 p-3 bg-light rounded border mb-4">
-                                <div class="p-2 border rounded bg-white d-inline-flex align-items-center justify-content-center" style="min-width: 130px; min-height: 75px; max-width: 160px;">
-                                    <img src="<?= $logoSrc ?>" alt="Profile Logo" class="img-fluid" style="max-height: 65px; object-fit: contain;">
+                                <div class="p-2 border rounded bg-white d-inline-flex align-items-center justify-content-center profile-logo-box">
+                                    <img src="<?= $logoSrc ?>" alt="Profile Logo" class="img-fluid profile-logo-img">
                                 </div>
                                 <div>
                                     <div class="d-flex align-items-center gap-2 mb-1">
@@ -295,7 +324,7 @@ if (!empty($user['profile_img']) && file_exists(BASE_PATH . '/uploads/profile/' 
 
                                 <h6 class="fw-bold text-dark mb-2">Company Logo</h6>
                                 <div class="p-3 border rounded bg-light d-inline-block">
-                                    <img src="<?= $logoSrc ?>" alt="Company Logo" style="max-height: 80px; max-width: 200px; object-fit: contain;">
+                                    <img src="<?= $logoSrc ?>" alt="Company Logo" class="company-logo-img">
                                 </div>
                             </div>
 
@@ -333,6 +362,52 @@ if (!empty($user['profile_img']) && file_exists(BASE_PATH . '/uploads/profile/' 
                             </div>
                         </div>
 
+                        <?php if ($isSuperadmin): ?>
+                            <!-- TAB 6: System Branding (Superadmin Only) -->
+                            <div class="tab-pane fade" id="tab-branding" role="tabpanel">
+                                <div class="row g-4">
+                                    <!-- Login Logo Preview -->
+                                    <div class="col-md-4 col-sm-12">
+                                        <div class="card border h-100 shadow-none">
+                                            <div class="card-body text-center p-3">
+                                                <div class="text-muted small fw-bold mb-2">Login Logo</div>
+                                                <div class="p-3 bg-light rounded border d-flex align-items-center justify-content-center mx-auto mb-2 branding-preview-box">
+                                                    <img src="<?= $superLoginLogoSrc ?>" alt="Login Logo" class="img-fluid branding-preview-login">
+                                                </div>
+                                                <small class="text-muted d-block">Displayed on the login screen</small>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Header Logo Preview -->
+                                    <div class="col-md-4 col-sm-12">
+                                        <div class="card border h-100 shadow-none">
+                                            <div class="card-body text-center p-3">
+                                                <div class="text-muted small fw-bold mb-2">Header Logo</div>
+                                                <div class="p-3 bg-light rounded border d-flex align-items-center justify-content-center mx-auto mb-2 branding-preview-box">
+                                                    <img src="<?= $superHeaderLogoSrc ?>" alt="Header Logo" class="img-fluid branding-preview-header">
+                                                </div>
+                                                <small class="text-muted d-block">Displayed on the top navigation bar</small>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Favicon Preview -->
+                                    <div class="col-md-4 col-sm-12">
+                                        <div class="card border h-100 shadow-none">
+                                            <div class="card-body text-center p-3">
+                                                <div class="text-muted small fw-bold mb-2">Favicon</div>
+                                                <div class="p-3 bg-light rounded border d-flex align-items-center justify-content-center mx-auto mb-2 branding-preview-box">
+                                                    <img src="<?= $superFaviconSrc ?>" alt="Favicon" class="img-fluid branding-preview-favicon">
+                                                </div>
+                                                <small class="text-muted d-block">Displayed in browser tabs</small>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        <?php endif; ?>
+
                     </div>
                 </div>
             </div>
@@ -353,8 +428,8 @@ if (!empty($user['profile_img']) && file_exists(BASE_PATH . '/uploads/profile/' 
                 <div class="card-body">
                     <form id="logoUploadForm" enctype="multipart/form-data">
                         <div class="text-center mb-3">
-                            <div class="p-2 border rounded bg-white d-inline-flex align-items-center justify-content-center" style="min-width: 140px; min-height: 80px; max-width: 180px;">
-                                <img id="currentLogoPreview" src="<?= $logoSrc ?>" alt="Profile Logo" class="img-fluid" style="max-height: 70px; object-fit: contain;">
+                            <div class="p-2 border rounded bg-white d-inline-flex align-items-center justify-content-center profile-edit-logo-box">
+                                <img id="currentLogoPreview" src="<?= $logoSrc ?>" alt="Profile Logo" class="img-fluid profile-edit-logo-img">
                             </div>
                         </div>
 
@@ -368,7 +443,6 @@ if (!empty($user['profile_img']) && file_exists(BASE_PATH . '/uploads/profile/' 
                                     SELECT FILE
                                 </button>
                             </div>
-                            <small class="text-muted d-block mt-1">Allowed formats: JPG, PNG, WEBP (Max 5MB)</small>
                         </div>
 
                         <button type="submit" class="btn btn-primary" id="saveLogoBtn">
@@ -425,6 +499,100 @@ if (!empty($user['profile_img']) && file_exists(BASE_PATH . '/uploads/profile/' 
             </div>
         </div>
     </div>
+
+    <?php if ($isSuperadmin): ?>
+        <!-- Superadmin Branding Settings (Login Logo, Header Logo, Favicon) -->
+        <div class="row g-4 mt-1">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header bg-white py-3 border-bottom">
+                        <div class="d-flex align-items-center justify-content-between">
+                            <div>
+                                <h6 class="mb-0 "> System Settings for Superadmin</h6>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card-body p-4">
+                        <form id="brandingUploadForm" enctype="multipart/form-data">
+                            <div class="row g-4">
+                                <!-- 1. Login Logo -->
+                                <div class="col-lg-4 col-md-6">
+                                    <label class="form-label fw-bold">Login Logo </label>
+                                    <div class="input-group mb-2">
+                                        <input type="text" class="form-control bg-light" id="loginLogoNameDisplay" 
+                                            value="<?= !empty($user['login_logo']) ? htmlspecialchars($user['login_logo']) : '' ?>" 
+                                            placeholder="No File Selected" readonly>
+                                        <input type="file" name="login_logo" id="loginLogoInput" class="d-none" accept="image/png, image/jpeg, image/jpg, image/webp">
+                                        <button class="btn btn-select-file" type="button" id="selectLoginLogoBtn">
+                                            SELECT FILE
+                                        </button>
+                                    </div>
+                                    <input type="hidden" name="remove_login_logo" id="remove_login_logo" value="0">
+                                    
+                                    <div id="loginLogoPreviewContainer" class="image-preview-wrapper mt-2 <?= $hasSuperLoginLogo ? '' : 'd-none' ?>">
+                                        <img id="loginLogoPreview" src="<?= $superLoginLogoSrc ?>" alt="Login Logo Preview" class="image-preview-thumb branding-thumb-lg">
+                                        <button type="button" class="btn btn-sm btn-danger btn-remove-preview" id="removeLoginLogoBtn" title="Remove image">
+                                            <i data-lucide="x" class="fs-12"></i>
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <!-- 2. Header Logo -->
+                                <div class="col-lg-4 col-md-6">
+                                    <label class="form-label fw-bold">Header Logo </label>
+                                    <div class="input-group mb-2">
+                                        <input type="text" class="form-control bg-light" id="headerLogoNameDisplay" 
+                                            value="<?= !empty($user['header_logo']) ? htmlspecialchars($user['header_logo']) : '' ?>" 
+                                            placeholder="No File Selected" readonly>
+                                        <input type="file" name="header_logo" id="headerLogoInput" class="d-none" accept="image/png, image/jpeg, image/jpg, image/webp">
+                                        <button class="btn btn-select-file" type="button" id="selectHeaderLogoBtn">
+                                            SELECT FILE
+                                        </button>
+                                    </div>
+                                    <input type="hidden" name="remove_header_logo" id="remove_header_logo" value="0">
+                                    
+                                    <div id="headerLogoPreviewContainer" class="image-preview-wrapper mt-2 <?= $hasSuperHeaderLogo ? '' : 'd-none' ?>">
+                                        <img id="headerLogoPreview" src="<?= $superHeaderLogoSrc ?>" alt="Header Logo Preview" class="image-preview-thumb branding-thumb-lg">
+                                        <button type="button" class="btn btn-sm btn-danger btn-remove-preview" id="removeHeaderLogoBtn" title="Remove image">
+                                            <i data-lucide="x" class="fs-12"></i>
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <!-- 3. Favicon -->
+                                <div class="col-lg-4 col-md-6">
+                                    <label class="form-label fw-bold">Favicon </label>
+                                    <div class="input-group mb-2">
+                                        <input type="text" class="form-control bg-light" id="faviconNameDisplay" 
+                                            value="<?= !empty($user['favicon']) ? htmlspecialchars($user['favicon']) : '' ?>" 
+                                            placeholder="No File Selected" readonly>
+                                        <input type="file" name="favicon" id="faviconInput" class="d-none" accept="image/png, image/jpeg, image/jpg, image/webp, image/x-icon, image/vnd.microsoft.icon">
+                                        <button class="btn btn-select-file" type="button" id="selectFaviconBtn">
+                                            SELECT FILE
+                                        </button>
+                                    </div>
+                                    <input type="hidden" name="remove_favicon" id="remove_favicon" value="0">
+                                    
+                                    <div id="faviconPreviewContainer" class="image-preview-wrapper mt-2 <?= $hasSuperFavicon ? '' : 'd-none' ?>">
+                                        <img id="faviconPreview" src="<?= $superFaviconSrc ?>" alt="Favicon Preview" class="image-preview-thumb branding-thumb-fav">
+                                        <button type="button" class="btn btn-sm btn-danger btn-remove-preview" id="removeFaviconBtn" title="Remove icon">
+                                            <i data-lucide="x" class="fs-12"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="mt-4 pt-3 border-top d-flex align-items-center gap-2">
+                                <button type="submit" class="btn btn-primary" id="saveBrandingBtn">
+                                    <i data-lucide="upload-cloud" class="fs-14 align-middle me-1"></i>Save
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    <?php endif; ?>
 <?php endif; ?>
 
 <?php
@@ -627,6 +795,97 @@ include BASE_PATH . '/include/footer.php';
                 return false;
             }
         });
+
+        // 3. Superadmin System Branding Handlers
+        <?php if ($isSuperadmin && $isEdit): ?>
+            function bindBrandingUploader(btnId, inputId, displayId, previewId, containerId, removeBtnId, removeHiddenId) {
+                $('#' + btnId).on('click', function() {
+                    $('#' + inputId).trigger('click');
+                });
+
+                $('#' + inputId).on('change', function(e) {
+                    let file = e.target.files[0];
+                    if (file) {
+                        let validExtensions = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/x-icon', 'image/vnd.microsoft.icon'];
+                        let ext = file.name.split('.').pop().toLowerCase();
+                        let allowed = ['jpg', 'jpeg', 'png', 'webp', 'ico'];
+                        if (!allowed.includes(ext)) {
+                            showToast('Please select a valid image (JPG, PNG, WEBP, ICO)', 'error');
+                            $(this).val('');
+                            $('#' + displayId).val('');
+                            return;
+                        }
+                        if (file.size > 5 * 1024 * 1024) {
+                            showToast('File size cannot exceed 5MB', 'error');
+                            $(this).val('');
+                            $('#' + displayId).val('');
+                            return;
+                        }
+
+                        $('#' + displayId).val(file.name);
+                        $('#' + removeHiddenId).val('0');
+
+                        let reader = new FileReader();
+                        reader.onload = function(evt) {
+                            $('#' + previewId).attr('src', evt.target.result);
+                            $('#' + containerId).removeClass('d-none');
+                            if (window.lucide) lucide.createIcons();
+                        };
+                        reader.readAsDataURL(file);
+                    }
+                });
+
+                $('#' + removeBtnId).on('click', function() {
+                    $('#' + inputId).val('');
+                    $('#' + displayId).val('');
+                    $('#' + previewId).attr('src', '');
+                    $('#' + containerId).addClass('d-none');
+                    $('#' + removeHiddenId).val('1');
+                });
+            }
+
+            bindBrandingUploader('selectLoginLogoBtn', 'loginLogoInput', 'loginLogoNameDisplay', 'loginLogoPreview', 'loginLogoPreviewContainer', 'removeLoginLogoBtn', 'remove_login_logo');
+            bindBrandingUploader('selectHeaderLogoBtn', 'headerLogoInput', 'headerLogoNameDisplay', 'headerLogoPreview', 'headerLogoPreviewContainer', 'removeHeaderLogoBtn', 'remove_header_logo');
+            bindBrandingUploader('selectFaviconBtn', 'faviconInput', 'faviconNameDisplay', 'faviconPreview', 'faviconPreviewContainer', 'removeFaviconBtn', 'remove_favicon');
+
+            $('#brandingUploadForm').on('submit', function(e) {
+                e.preventDefault();
+                let formData = new FormData(this);
+                formData.append('action', 'update_superadmin_branding');
+
+                let $btn = $('#saveBrandingBtn');
+                let origHtml = $btn.html();
+
+                $.ajax({
+                    url: SITE_URL + 'admin/setting/profile_action.php',
+                    type: 'POST',
+                    data: formData,
+                    processData: false,
+                    contentType: false,
+                    dataType: 'json',
+                    beforeSend: function() {
+                        $btn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm me-1"></span> Saving...');
+                    },
+                    success: function(res) {
+                        if (res.status === true) {
+                            showToast(res.message, 'success');
+                            setTimeout(function() {
+                                window.location.href = SITE_URL + 'profile';
+                            }, 1000);
+                        } else {
+                            showToast(res.message, 'error');
+                        }
+                    },
+                    error: function() {
+                        showToast('Something went wrong. Please try again.', 'error');
+                    },
+                    complete: function() {
+                        $btn.prop('disabled', false).html(origHtml);
+                        if (window.lucide) lucide.createIcons();
+                    }
+                });
+            });
+        <?php endif; ?>
     });
 </script>
 </body>

@@ -241,3 +241,83 @@ function checkPermissionOrDeny($module, string $action = 'views'): void
         exit;
     }
 }
+
+/**
+ * Common helper function to upload and convert images to WebP format.
+ * If the image is an ICO file, it saves directly. Other images (JPG, PNG, GIF, WEBP)
+ * are converted into optimized .webp files with transparency preserved.
+ *
+ * @param array $file $_FILES['input_name'] array
+ * @param string $targetDir Target folder path (e.g. BASE_PATH . '/uploads/profile/')
+ * @param string $prefix File name prefix (e.g. 'profile', 'login_logo', 'header_logo')
+ * @param int $quality WebP quality (1 to 100, default: 85)
+ * @return string|false Return new filename (e.g. 'logo_1234567_1234.webp') or false on failure
+ */
+function upload_and_convert_to_webp($file, $targetDir, $prefix = 'img', $quality = 85)
+{
+    if (!isset($file['tmp_name']) || $file['error'] !== UPLOAD_ERR_OK) {
+        return false;
+    }
+
+    $targetDir = rtrim($targetDir, '/\\') . '/';
+    if (!is_dir($targetDir)) {
+        @mkdir($targetDir, 0777, true);
+    }
+
+    $tmpPath = $file['tmp_name'];
+    $origName = $file['name'] ?? '';
+    $ext = strtolower(pathinfo($origName, PATHINFO_EXTENSION));
+
+    // Handle .ico and .svg files directly without conversion
+    if ($ext === 'ico' || $ext === 'svg') {
+        $newFileName = $prefix . '_' . time() . '_' . rand(1000, 9999) . '.' . $ext;
+        if (move_uploaded_file($tmpPath, $targetDir . $newFileName)) {
+            return $newFileName;
+        }
+        return false;
+    }
+
+    $imgInfo = @getimagesize($tmpPath);
+    if ($imgInfo === false) {
+        return false;
+    }
+
+    $mime = $imgInfo['mime'];
+    $srcImg = null;
+
+    switch ($mime) {
+        case 'image/jpeg':
+        case 'image/jpg':
+            $srcImg = @imagecreatefromjpeg($tmpPath);
+            break;
+        case 'image/png':
+            $srcImg = @imagecreatefrompng($tmpPath);
+            break;
+        case 'image/webp':
+            $srcImg = @imagecreatefromwebp($tmpPath);
+            break;
+        case 'image/gif':
+            $srcImg = @imagecreatefromgif($tmpPath);
+            break;
+        default:
+            return false;
+    }
+
+    if (!$srcImg) {
+        return false;
+    }
+
+    // Preserve transparency for PNG / WebP / GIF
+    imagepalettetotruecolor($srcImg);
+    imagealphablending($srcImg, false);
+    imagesavealpha($srcImg, true);
+
+    $newFileName = $prefix . '_' . time() . '_' . rand(1000, 9999) . '.webp';
+    $destPath = $targetDir . $newFileName;
+
+    $saved = @imagewebp($srcImg, $destPath, $quality);
+    imagedestroy($srcImg);
+
+    return $saved ? $newFileName : false;
+}
+

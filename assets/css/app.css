@@ -2764,14 +2764,14 @@ textarea.form-control-lg {
 }
 
 .form-check-input:focus {
-  border-color: rgb(136, 183.5, 195);
+  border-color: var(--bs-primary);
   outline: 0;
-  box-shadow: 0 0 0 .25rem rgba(17, 112, 135, .25)
+  box-shadow: 0 0 0 .25rem rgba(var(--bs-primary-rgb), var(--bs-border-opacity));
 }
 
 .form-check-input:checked {
-  background-color: #117087;
-  border-color: #117087
+  background-color: var(--bs-primary);
+  border-color: var(--bs-primary)
 }
 
 .form-check-input:checked[type=checkbox] {
@@ -2783,8 +2783,10 @@ textarea.form-control-lg {
 }
 
 .form-check-input[type=checkbox]:indeterminate {
-  background-color: #117087;
-  border-color: #117087;
+  background-color: var(--bs-primary);
+  ;
+  border-color: var(--bs-primary);
+  ;
   --bs-form-check-bg-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3e%3cpath fill='none' stroke='%23fff' stroke-linecap='round' stroke-linejoin='round' stroke-width='3' d='M6 10h8'/%3e%3c/svg%3e")
 }
 
@@ -2890,7 +2892,7 @@ textarea.form-control-lg {
   height: 1rem;
   margin-top: -0.25rem;
   appearance: none;
-  background-color: #117087;
+  background-color: var(--bs-primary);
   border: 0;
   border-radius: 1rem;
   transition: background-color .15s ease-in-out, border-color .15s ease-in-out, box-shadow .15s ease-in-out
@@ -2920,7 +2922,7 @@ textarea.form-control-lg {
   width: 1rem;
   height: 1rem;
   appearance: none;
-  background-color: #117087;
+  background-color: var(--bs-primary);
   border: 0;
   border-radius: 1rem;
   transition: background-color .15s ease-in-out, border-color .15s ease-in-out, box-shadow .15s ease-in-out
@@ -3057,7 +3059,7 @@ textarea.form-control-lg {
 
 .form-floating>:disabled~label,
 .form-floating>.form-control:disabled~label {
-  color: #6c757d
+  color: var(--bs-gray-600);
 }
 
 .input-group {
@@ -3175,7 +3177,7 @@ textarea.form-control-lg {
   padding: .25rem .5rem;
   margin-top: .1rem;
   font-size: 0.875rem;
-  color: #fff;
+  color: var(--bs-white);
   background-color: var(--bs-success);
   border-radius: var(--bs-border-radius)
 }
@@ -3285,7 +3287,7 @@ textarea.form-control.is-valid {
   padding: .25rem .5rem;
   margin-top: .1rem;
   font-size: 0.875rem;
-  color: #fff;
+  color: var(--bs-white);
   background-color: var(--bs-danger);
   border-radius: var(--bs-border-radius)
 }

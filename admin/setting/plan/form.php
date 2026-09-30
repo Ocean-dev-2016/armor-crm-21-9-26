@@ -209,17 +209,29 @@ include BASE_PATH . '/component/breadcrumb.php';
                             </div>
                         </div>
                         <div class="col-md-2">
-                            <div class="d-flex flex-column align-items-center gap-2">
+                            <div class="d-flex flex-column align-items-center justify-content-center h-100 gap-2">
                                 <button type="button"
-                                    class="btn btn-primary"
+                                    class="btn btn-primary btn-sm px-3"
                                     id="moveAllRight"
-                                    title="Select All">
+                                    title="Move All Right">
                                     <i data-lucide="chevrons-right"></i>
                                 </button>
                                 <button type="button"
-                                    class="btn btn-secondary"
+                                    class="btn btn-outline-primary btn-sm px-3"
+                                    id="moveSelectedRight"
+                                    title="Move Selected Right">
+                                    <i data-lucide="chevron-right"></i>
+                                </button>
+                                <button type="button"
+                                    class="btn btn-outline-secondary btn-sm px-3"
+                                    id="moveSelectedLeft"
+                                    title="Move Selected Left">
+                                    <i data-lucide="chevron-left"></i>
+                                </button>
+                                <button type="button"
+                                    class="btn btn-secondary btn-sm px-3"
                                     id="moveAllLeft"
-                                    title="Remove All">
+                                    title="Move All Left">
                                     <i data-lucide="chevrons-left"></i>
                                 </button>
                             </div>
@@ -280,17 +292,29 @@ include BASE_PATH . '/component/breadcrumb.php';
                             </div>
                         </div>
                         <div class="col-md-2">
-                            <div class="d-flex flex-column align-items-center gap-2">
+                            <div class="d-flex flex-column align-items-center justify-content-center h-100 gap-2">
                                 <button type="button"
-                                    class="btn btn-primary"
+                                    class="btn btn-primary btn-sm px-3"
                                     id="moveAllAppRight"
-                                    title="Select All">
+                                    title="Move All Right">
                                     <i data-lucide="chevrons-right"></i>
                                 </button>
                                 <button type="button"
-                                    class="btn btn-secondary"
+                                    class="btn btn-outline-primary btn-sm px-3"
+                                    id="moveSelectedAppRight"
+                                    title="Move Selected Right">
+                                    <i data-lucide="chevron-right"></i>
+                                </button>
+                                <button type="button"
+                                    class="btn btn-outline-secondary btn-sm px-3"
+                                    id="moveSelectedAppLeft"
+                                    title="Move Selected Left">
+                                    <i data-lucide="chevron-left"></i>
+                                </button>
+                                <button type="button"
+                                    class="btn btn-secondary btn-sm px-3"
                                     id="moveAllAppLeft"
-                                    title="Remove All">
+                                    title="Move All Left">
                                     <i data-lucide="chevrons-left"></i>
                                 </button>
                             </div>
@@ -352,15 +376,28 @@ include BASE_PATH . '/include/footer.php';
 <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.6/Sortable.min.js"></script>
 <script>
     $(document).ready(function() {
+        if (window.lucide) {
+            lucide.createIcons();
+        }
+
         // --- Panel Right ---
         const availableModules = document.getElementById('availableModules');
         const selectedModules = document.getElementById('selectedModules');
         const panelRightInput = document.getElementById('panel_right');
 
+        // Toggle selection highlight on click (allow multiple cards selection)
+        $(document).on('click', '.module-card', function(e) {
+            $(this).toggleClass('selected-highlight');
+        });
+
+        // Clear highlight if dragging starts
         new Sortable(availableModules, {
             group: 'panel_modules',
             animation: 150,
             ghostClass: 'sortable-ghost',
+            onStart: function(evt) {
+                $(evt.item).removeClass('selected-highlight');
+            },
             onAdd: updateSelectedPanelModules,
             onRemove: updateSelectedPanelModules
         });
@@ -369,6 +406,9 @@ include BASE_PATH . '/include/footer.php';
             group: 'panel_modules',
             animation: 150,
             ghostClass: 'sortable-ghost',
+            onStart: function(evt) {
+                $(evt.item).removeClass('selected-highlight');
+            },
             onAdd: updateSelectedPanelModules,
             onRemove: updateSelectedPanelModules,
             onSort: updateSelectedPanelModules
@@ -382,17 +422,41 @@ include BASE_PATH . '/include/footer.php';
             panelRightInput.value = ids.join(',');
         }
 
+        // Move All Panel Modules Right
         $('#moveAllRight').on('click', function() {
-            $('#availableModules .module-card').each(function() {
-                $('#selectedModules').append(this);
-            });
+            $('#availableModules .module-card').removeClass('selected-highlight').appendTo('#selectedModules');
             updateSelectedPanelModules();
         });
 
+        // Move Selected (Highlighted) Panel Modules Right
+        $('#moveSelectedRight').on('click', function() {
+            const $selected = $('#availableModules .module-card.selected-highlight');
+            if ($selected.length === 0) {
+                if (typeof showToast === 'function') {
+                    showToast('Please click on one or more available modules to select them first.', 'warning');
+                }
+                return;
+            }
+            $selected.removeClass('selected-highlight').appendTo('#selectedModules');
+            updateSelectedPanelModules();
+        });
+
+        // Move Selected (Highlighted) Panel Modules Left
+        $('#moveSelectedLeft').on('click', function() {
+            const $selected = $('#selectedModules .module-card.selected-highlight');
+            if ($selected.length === 0) {
+                if (typeof showToast === 'function') {
+                    showToast('Please click on one or more selected modules to remove them first.', 'warning');
+                }
+                return;
+            }
+            $selected.removeClass('selected-highlight').appendTo('#availableModules');
+            updateSelectedPanelModules();
+        });
+
+        // Move All Panel Modules Left
         $('#moveAllLeft').on('click', function() {
-            $('#selectedModules .module-card').each(function() {
-                $('#availableModules').append(this);
-            });
+            $('#selectedModules .module-card').removeClass('selected-highlight').appendTo('#availableModules');
             updateSelectedPanelModules();
         });
 
@@ -405,6 +469,9 @@ include BASE_PATH . '/include/footer.php';
             group: 'app_modules',
             animation: 150,
             ghostClass: 'sortable-ghost',
+            onStart: function(evt) {
+                $(evt.item).removeClass('selected-highlight');
+            },
             onAdd: updateSelectedAppModules,
             onRemove: updateSelectedAppModules
         });
@@ -413,6 +480,9 @@ include BASE_PATH . '/include/footer.php';
             group: 'app_modules',
             animation: 150,
             ghostClass: 'sortable-ghost',
+            onStart: function(evt) {
+                $(evt.item).removeClass('selected-highlight');
+            },
             onAdd: updateSelectedAppModules,
             onRemove: updateSelectedAppModules,
             onSort: updateSelectedAppModules
@@ -426,17 +496,41 @@ include BASE_PATH . '/include/footer.php';
             appRightInput.value = ids.join(',');
         }
 
+        // Move All App Modules Right
         $('#moveAllAppRight').on('click', function() {
-            $('#availableAppModules .module-card').each(function() {
-                $('#selectedAppModules').append(this);
-            });
+            $('#availableAppModules .module-card').removeClass('selected-highlight').appendTo('#selectedAppModules');
             updateSelectedAppModules();
         });
 
+        // Move Selected (Highlighted) App Modules Right
+        $('#moveSelectedAppRight').on('click', function() {
+            const $selected = $('#availableAppModules .module-card.selected-highlight');
+            if ($selected.length === 0) {
+                if (typeof showToast === 'function') {
+                    showToast('Please click on one or more available app modules to select them first.', 'warning');
+                }
+                return;
+            }
+            $selected.removeClass('selected-highlight').appendTo('#selectedAppModules');
+            updateSelectedAppModules();
+        });
+
+        // Move Selected (Highlighted) App Modules Left
+        $('#moveSelectedAppLeft').on('click', function() {
+            const $selected = $('#selectedAppModules .module-card.selected-highlight');
+            if ($selected.length === 0) {
+                if (typeof showToast === 'function') {
+                    showToast('Please click on one or more selected app modules to remove them first.', 'warning');
+                }
+                return;
+            }
+            $selected.removeClass('selected-highlight').appendTo('#availableAppModules');
+            updateSelectedAppModules();
+        });
+
+        // Move All App Modules Left
         $('#moveAllAppLeft').on('click', function() {
-            $('#selectedAppModules .module-card').each(function() {
-                $('#availableAppModules').append(this);
-            });
+            $('#selectedAppModules .module-card').removeClass('selected-highlight').appendTo('#availableAppModules');
             updateSelectedAppModules();
         });
 

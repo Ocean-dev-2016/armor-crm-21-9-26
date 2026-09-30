@@ -371,7 +371,6 @@ include BASE_PATH . '/component/breadcrumb.php';
                                 </div>
                             </div>
 
-                            <!-- Quotation Section -->
                             <div class="card mb-3 border">
                                 <div class="card-header bg-light py-2">
                                     <h6 class="mb-0 fw-bold text-dark">Quotation Setting</h6>

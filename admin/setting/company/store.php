@@ -201,7 +201,6 @@ if (!is_dir($uploadDir)) {
 // Helper function to handle image upload
 function handleCompanyImageUpload($inputName, $prefixName, $uploadDir, &$response) {
     if (isset($_FILES[$inputName]) && $_FILES[$inputName]['error'] === UPLOAD_ERR_OK) {
-        $fileTmpPath   = $_FILES[$inputName]['tmp_name'];
         $fileName      = $_FILES[$inputName]['name'];
         $fileSize      = $_FILES[$inputName]['size'];
         $fileNameCmps  = explode(".", $fileName);
@@ -220,9 +219,8 @@ function handleCompanyImageUpload($inputName, $prefixName, $uploadDir, &$respons
             exit;
         }
 
-        $newFileName = $prefixName . '_' . time() . '_' . rand(1000, 9999) . '.' . $fileExtension;
-        $destPath = $uploadDir . $newFileName;
-        if (move_uploaded_file($fileTmpPath, $destPath)) {
+        $newFileName = upload_and_convert_to_webp($_FILES[$inputName], $uploadDir, $prefixName, 85);
+        if ($newFileName) {
             return $newFileName;
         }
     }

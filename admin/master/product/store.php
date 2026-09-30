@@ -141,7 +141,6 @@ if (!empty($uniqueResult)) {
 // Handle Image Upload
 $imageName = null;
 if (isset($_FILES['image']) && $_FILES['image']['error'] === UPLOAD_ERR_OK) {
-    $fileTmpPath   = $_FILES['image']['tmp_name'];
     $fileName      = $_FILES['image']['name'];
     $fileSize      = $_FILES['image']['size'];
     $fileNameCmps  = explode(".", $fileName);
@@ -161,14 +160,9 @@ if (isset($_FILES['image']) && $_FILES['image']['error'] === UPLOAD_ERR_OK) {
     }
 
     $uploadDir = BASE_PATH . '/uploads/product/';
-    if (!is_dir($uploadDir)) {
-        mkdir($uploadDir, 0777, true);
-    }
+    $newFileName = upload_and_convert_to_webp($_FILES['image'], $uploadDir, 'prod', 85);
 
-    $newFileName = 'prod_' . time() . '_' . rand(1000, 9999) . '.' . $fileExtension;
-    $dest_path   = $uploadDir . $newFileName;
-
-    if (move_uploaded_file($fileTmpPath, $dest_path)) {
+    if ($newFileName) {
         $imageName = $newFileName;
 
         // If editing and old image exists, remove old image
