@@ -20,38 +20,23 @@ include BASE_PATH . '/component/breadcrumb.php';
 $isSuperadmin = isset($_SESSION['user_type']) && $_SESSION['user_type'] === 'superadmin';
 ?>
 
-<div class="row g-4">
-    <div class="col-12">
-        <div class="card">
-            <div class="card-header">
-                <h6 class="mb-0"><?= $pageNm; ?></h6>
-            </div>
-            <div class="card-body">
-                <div class="table-responsive">
-                    <table class="table table-hover table-bordered align-middle table-striped mb-0 data-table" data-ajaxurl="<?= SITE_URL ?>admin/master/product/ajax.php">
-                        <thead>
-                            <tr>
-                                <th>Sr No.</th>
-                                <?php if ($isSuperadmin): ?>
-                                    <th>Company Name</th>
-                                <?php endif; ?>
-                                <th>Name</th>
-                                <th>Type</th>
-                                <th>Category</th>
-                                <th>Sub Category</th>
-                                <th>Image</th>
-                                <th>Status</th>
-                                <th>Action</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
+<?php
+$ajaxUrl = SITE_URL . 'admin/master/product/ajax.php';
+$tableHeaders = ['Sr No.'];
+if ($isSuperadmin) {
+    $tableHeaders[] = 'Company Name';
+}
+$tableHeaders = array_merge($tableHeaders, [
+    'Name',
+    'Type',
+    'Category',
+    'Sub Category',
+    'Image',
+    'Status',
+    'Action'
+]);
+include BASE_PATH . '/component/datatable.php';
+?>
 
 <?php
 include BASE_PATH . '/include/footer.php';

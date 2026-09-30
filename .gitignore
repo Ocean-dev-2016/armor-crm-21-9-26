@@ -1,7 +1,8 @@
-# Database configuration
-conn/db.php
-db.php
-
 # Uploads directory
 /uploads/
 uploads/
+
+# VS Code settings
+.vscode/
+.vscode/*
+settings.json

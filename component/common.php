@@ -107,6 +107,36 @@ if (isset($_POST['action']) && $_POST['action'] === 'status') {
     exit;
 }
 
+if (isset($_POST['action']) && $_POST['action'] === 'update_position') {
+    $tbl   = isset($_POST['tbl']) ? trim($_POST['tbl']) : '';
+    $order = isset($_POST['order']) && is_array($_POST['order']) ? $_POST['order'] : [];
+
+    if (empty($tbl)) {
+        echo json_encode(['status' => false, 'message' => 'Invalid table name.']);
+        exit;
+    }
+
+    if (empty($order)) {
+        echo json_encode(['status' => false, 'message' => 'No order provided.']);
+        exit;
+    }
+
+    $position = 1;
+    foreach ($order as $id) {
+        $recId = (int)$id;
+        if ($recId > 0) {
+            db_query("UPDATE `{$tbl}` SET order_by = {$position}, updated_at = NOW() WHERE id = {$recId}");
+            $position++;
+        }
+    }
+
+    echo json_encode([
+        'status'  => true,
+        'message' => 'Positions updated successfully.'
+    ]);
+    exit;
+}
+
 if (isset($_GET['action']) && $_GET['action'] === 'country_base_state') {
     $country_id  = isset($_GET['country_id']) ? $_GET['country_id'] : 0;
     $stateResult = db_query("SELECT id, name FROM state WHERE country_id = " . (int) $country_id . " AND status = 1 ORDER BY name ASC");

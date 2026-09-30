@@ -11,9 +11,9 @@ include 'component/alert.php';
         <div class="card border-0 shadow-lg p-4">
           <div class="card-body">
             <div class="text-center mb-4">
-              <img src="<?= SITE_URL ?>assets/image/crm_logo.png" alt="Logo" class="logo">
+              <img src="<?= SITE_URL ?>assets/image/logo.png" alt="Logo" class="logo">
 
-              <p class="text-muted">Login to your account.</p>
+              <h5 class="mt-3">Login</h5>
             </div>
 
             <form id="loginForm">

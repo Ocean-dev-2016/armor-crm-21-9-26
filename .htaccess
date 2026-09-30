@@ -1,5 +1,11 @@
 RewriteEngine On
 
+# Allow Authorization Header for Bearer Token
+SetEnvIf Authorization "(.*)" HTTP_AUTHORIZATION=$1
+
+# API Routes
+RewriteRule ^api/v1/([^/]+)(\.php)?/?$ api/app.php?action=$1 [L,QSA]
+
 # Login
 RewriteRule ^login/?$ login.php [L,QSA]
 

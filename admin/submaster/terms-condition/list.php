@@ -24,91 +24,31 @@ if ($isSuperadmin) {
 ?>
 
 <!-- Terms & Condition Modal -->
-<div class="modal fade" id="TermsConditionModal" tabindex="-1" aria-labelledby="TermsConditionModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h1 class="modal-title fs-16" id="TermsConditionModalLabel">
-                    Add <?= $pageNm; ?>
-                </h1>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <form id="termsConditionForm" method="POST">
-                <div class="modal-body">
-                    <input type="hidden" name="id" id="id">
-                    <div class="row g-3">
-                        <?php if ($isSuperadmin): ?>
-                        <div class="col-md-12">
-                            <div class="mb-3">
-                                <label class="form-label">Company</label>
-                                <select name="company_id" id="select-company" class="form-select company_id">
-                                    <option value="">Select a Company</option>
-                                    <?php foreach ($companies as $c): ?>
-                                        <option value="<?= $c['id'] ?>">
-                                            <?= htmlspecialchars($c['name']) ?>
-                                        </option>
-                                    <?php endforeach; ?>
-                                </select>
-                            </div>
-                        </div>
-                        <?php endif; ?>
-
-                        <div class="col-md-12">
-                            <div class="mb-3">
-                                <label class="form-label">Name</label>
-                                <input type="text" name="name" id="name" class="form-control" placeholder="Enter <?= $pageNm ?> Name">
-                            </div>
-                        </div>
-
-                        <div class="col-md-12">
-                            <div class="mb-3">
-                                <label class="form-label">Terms & Condition</label>
-                                <div id="terms-editor" class="editor-container"></div>
-                                <input type="hidden" name="terms_condition" id="terms_condition" value="">
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                    <button type="submit" class="btn btn-primary" id="submitBtn">
-                        <span id="submitText">Submit</span>
-                        <span id="submitLoader" class="spinner-border spinner-border-sm d-none"></span>
-                    </button>
-                </div>
-            </form>
+<?php
+$modalId = 'TermsConditionModal';
+$formId = 'termsConditionForm';
+$includeCompanySelect = true;
+$modalBodyContent = function() { ?>
+    <div class="col-md-12">
+        <div class="mb-3">
+            <label class="form-label">Terms & Condition</label>
+            <div id="terms-editor" class="editor-container"></div>
+            <input type="hidden" name="terms_condition" id="terms_condition" value="">
         </div>
     </div>
-</div>
+<?php };
+include BASE_PATH . '/component/modal.php';
+?>
 
-<div class="row g-4">
-    <div class="col-12">
-        <div class="card">
-            <div class="card-header">
-                <h6 class="mb-0"><?= $pageNm; ?></h6>
-            </div>
-            <div class="card-body">
-                <div class="table-responsive">
-                    <table class="table table-hover table-bordered align-middle table-striped mb-0 data-table" data-ajaxurl="<?= SITE_URL ?>admin/submaster/terms-condition/ajax.php">
-                        <thead>
-                            <tr>
-                                <th>Sr No.</th>
-                                <?php if ($isSuperadmin): ?>
-                                    <th>Company Name</th>
-                                <?php endif; ?>
-                                <th>Name</th>
-                                <th>Status</th>
-                                <th>Action</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
+<?php
+$ajaxUrl = SITE_URL . 'admin/submaster/terms-condition/ajax.php';
+$tableHeaders = ['Sr No.'];
+if ($isSuperadmin) {
+    $tableHeaders[] = 'Company Name';
+}
+$tableHeaders = array_merge($tableHeaders, ['Name', 'Status', 'Action']);
+include BASE_PATH . '/component/datatable.php';
+?>
 
 <?php
 include BASE_PATH . '/include/footer.php';
@@ -165,21 +105,6 @@ include BASE_PATH . '/include/footer.php';
             }
         }
 
-        // Open Add Modal
-        $(document).on('click', '.open_modal', function() {
-            $('#id').val('');
-            $('#name').val('');
-            if (isSuperadmin) {
-                setSelectVal('#select-company', '');
-            }
-            setQuillContent('');
-            $('#terms_condition').val('');
-            $('#TermsConditionModalLabel').text('Add <?= $pageNm ?>');
-            $('#termsConditionForm').validate().resetForm();
-            $("#TermsConditionModal").modal("show");
-        });
-
-        // Form Validation & Submission
         let validationRules = {
             name: {
                 required: true,
@@ -200,100 +125,39 @@ include BASE_PATH . '/include/footer.php';
             validationMessages.company_id = { required: "Please select a company" };
         }
 
-        $("#termsConditionForm").validate({
+        initMasterModalCrud({
+            modalId: '#TermsConditionModal',
+            formId: '#termsConditionForm',
+            storeUrl: SITE_URL + 'admin/submaster/terms-condition/store.php',
+            pageNm: '<?= $pageNm ?>',
+            editBtn: '.terms_condition_edit',
             rules: validationRules,
             messages: validationMessages,
-            errorElement: "span",
-            errorClass: "text-danger",
-            submitHandler: function(form) {
-                // Sync Quill editor content to hidden input
+            beforeSubmit: function($form, form) {
                 if (termsQuill) {
                     let htmlContent = termsQuill.root.innerHTML;
                     if (htmlContent === '<p><br></p>') htmlContent = '';
                     $('#terms_condition').val(htmlContent);
                 }
-
-                let $form = $(form);
-                let $button = $("#submitBtn");
-                let $text = $("#submitText");
-                let $loader = $("#submitLoader");
-
-                $.ajax({
-                    url: SITE_URL + "admin/submaster/terms-condition/store.php",
-                    type: "POST",
-                    data: $form.serialize(),
-                    dataType: "json",
-                    beforeSend: function() {
-                        $button.prop("disabled", true);
-                        $text.text("Saving...");
-                        $loader.removeClass("d-none");
-                    },
-                    success: function(response) {
-                        if (response.status === true) {
-                            showToast(response.message, "success");
-                            $('#id').val('');
-                            $('#name').val('');
-                            if (isSuperadmin) {
-                                setSelectVal('#select-company', '');
-                            }
-                            setQuillContent('');
-                            $('#terms_condition').val('');
-                            form.reset();
-                            $(form).validate().resetForm();
-                            $("#TermsConditionModal").modal("hide");
-                            $(".data-table").DataTable().ajax.reload(null, false);
-                        } else {
-                            showToast(response.message, "error");
-                        }
-                    },
-                    error: function() {
-                        showToast("Something went wrong. Please try again.", "error");
-                    },
-                    complete: function() {
-                        $button.prop("disabled", false);
-                        $text.text("Submit");
-                        $loader.addClass("d-none");
-                    }
-                });
-            }
-        });
-
-        // Edit Terms & Condition
-        $(document).on('click', '.terms_condition_edit', function() {
-            var id = $(this).data('id');
-            $.ajax({
-                url: SITE_URL + 'admin/submaster/terms-condition/store.php',
-                type: 'GET',
-                data: {
-                    id: id,
-                    action: 'edit'
-                },
-                dataType: 'json',
-                success: function(response) {
-                    if (response.status === true) {
-                        let data = response.data;
-                        $('#id').val(data.id);
-                        $('#name').val(data.name);
-                        $('#TermsConditionModalLabel').text('Edit <?= $pageNm ?>');
-
-                        if (isSuperadmin) {
-                            setSelectVal('#select-company', data.company_id);
-                        }
-
-                        setQuillContent(data.terms_condition || '');
-                        $('#terms_condition').val(data.terms_condition || '');
-
-                        $("#TermsConditionModal").modal("show");
-                        if (window.lucide) lucide.createIcons();
-                    } else {
-                        showToast(response.message, 'error');
-                    }
-                },
-                error: function(xhr) {
-                    console.log(xhr.responseText);
-                    showToast('Something went wrong. Please try again.', 'error');
+            },
+            onReset: function() {
+                if (isSuperadmin) {
+                    setSelectVal('#select-company', '');
                 }
-            });
+                setQuillContent('');
+                $('#terms_condition').val('');
+            },
+            onEditPopulate: function(data) {
+                if (isSuperadmin) {
+                    setSelectVal('#select-company', data.company_id);
+                }
+                setQuillContent(data.terms_condition || '');
+                $('#terms_condition').val(data.terms_condition || '');
+            },
+            onSuccess: function() {
+                setQuillContent('');
+                $('#terms_condition').val('');
+            }
         });
     });
 </script>

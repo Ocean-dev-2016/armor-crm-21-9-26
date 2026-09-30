@@ -314,4 +314,70 @@ $(document).ready(function () {
 
         window.location.href = url;
     });
-});
+
+    // ==========================================
+    // Common DataTable In-Place Drag and Drop Ordering
+    // ==========================================
+    window.initDataTableDragSort = function ($table, tblName) {
+        if (!$table || !$table.length) return;
+        let tbody = $table.find('tbody')[0];
+        if (!tbody || typeof Sortable === 'undefined') return;
+
+        let tableEl = $table[0];
+        if (tableEl._dtSortable) {
+            tableEl._dtSortable.destroy();
+            tableEl._dtSortable = null;
+        }
+
+        tableEl._dtSortable = new Sortable(tbody, {
+            animation: 150,
+            handle: '.row-drag-handle',
+            ghostClass: 'bg-light',
+            onEnd: function () {
+                let order = [];
+                $table.find('tbody tr').each(function () {
+                    let rowId = $(this).attr('id');
+                    if (rowId && rowId.startsWith('row_')) {
+                        order.push(rowId.replace('row_', ''));
+                    }
+                });
+
+                if (order.length === 0) return;
+
+                $.ajax({
+                    url: SITE_URL + 'component/common.php',
+                    type: 'POST',
+                    data: {
+                        action: 'update_position',
+                        tbl: tblName,
+                        order: order
+                    },
+                    dataType: 'json',
+                    success: function (res) {
+                        if (res.status) {
+                            showToast(res.message, 'success');
+                            if ($.fn.DataTable.isDataTable($table)) {
+                                $table.DataTable().ajax.reload(null, false);
+                            }
+                        } else {
+                            showToast(res.message || 'Failed to update order.', 'error');
+                        }
+                    },
+                    error: function () {
+                        showToast('Something went wrong while reordering.', 'error');
+                    }
+                });
+            }
+        });
+    };
+
+    // Auto-initialize if table has data-drag-sort attribute
+    $(document).on('draw.dt', '.data-table', function () {
+        let $tbl = $(this);
+        let tblName = $tbl.data('tbl') || $tbl.data('table');
+        let hasDragSort = $tbl.data('drag-sort') !== undefined || $tbl.find('.row-drag-handle').length > 0;
+        if (hasDragSort && tblName) {
+            window.initDataTableDragSort($tbl, tblName);
+        }
+    });
+});

@@ -24,102 +24,50 @@ if ($isSuperadmin) {
 ?>
 
 <!-- Expense Category Modal -->
-<div class="modal fade" id="ExpenseCategoryModal" tabindex="-1" aria-labelledby="ExpenseCategoryModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h1 class="modal-title fs-16" id="ExpenseCategoryModalLabel">
-                    Add <?= $pageNm; ?>
-                </h1>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+<?php
+$modalId = 'ExpenseCategoryModal';
+$formId = 'expenseCategoryForm';
+$includeCompanySelect = true;
+$nameLabel = 'Name';
+$formEnctype = 'multipart/form-data';
+$hasImageUpload = true;
+$modalBodyContent = function() { ?>
+    <div class="col-md-12">
+        <div class="mb-3">
+            <label class="form-label">Select Image</label>
+            <div class="input-group">
+                <input type="text" class="form-control bg-light" id="imageFileNameDisplay" placeholder="No File Selected" readonly>
+                <input type="file" name="image" id="expenseCategoryImageInput" class="d-none" accept="image/png, image/jpeg, image/jpg, image/webp">
+                <button class="btn btn-select-file" type="button" id="selectFileBtn">
+                    SELECT FILE
+                </button>
             </div>
-            <form id="expenseCategoryForm" method="POST" enctype="multipart/form-data">
-                <div class="modal-body">
-                    <input type="hidden" name="id" id="id">
-                    <input type="hidden" name="remove_image" id="remove_image" value="0">
-                    <div class="row g-3">
-                        <?php if ($isSuperadmin): ?>
-                        <div class="col-md-12">
-                            <div class="mb-3">
-                                <label class="form-label">Company</label>
-                                <select name="company_id" id="select-company" class="form-select company_id">
-                                    <option value="">Select a Company</option>
-                                    <?php foreach ($companies as $c): ?>
-                                        <option value="<?= $c['id'] ?>">
-                                            <?= htmlspecialchars($c['name']) ?>
-                                        </option>
-                                    <?php endforeach; ?>
-                                </select>
-                            </div>
-                        </div>
-                        <?php endif; ?>
-                        <div class="col-md-12">
-                            <div class="mb-3">
-                                <label class="form-label">Category Name</label>
-                                <input type="text" name="name" id="name" class="form-control" placeholder="Enter <?= $pageNm ?> Name">
-                            </div>
-                        </div>
-                        <div class="col-md-12">
-                            <div class="mb-3">
-                                <label class="form-label">Select Image</label>
-                                <div class="input-group">
-                                    <input type="text" class="form-control bg-light" id="imageFileNameDisplay" placeholder="No File Selected" readonly>
-                                    <input type="file" name="image" id="expenseCategoryImageInput" class="d-none" accept="image/png, image/jpeg, image/jpg, image/webp">
-                                    <button class="btn btn-select-file" type="button" id="selectFileBtn">
-                                        SELECT FILE
-                                    </button>
-                                </div>
-                                <div id="imagePreviewContainer" class="image-preview-wrapper d-none">
-                                    <img id="imagePreview" src="" alt="Preview" class="image-preview-thumb">
-                                    <button type="button" class="btn btn-sm btn-danger btn-remove-preview" id="removeImageBtn" title="Remove selected image">
-                                        <i data-lucide="x" class="fs-12"></i>
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                    <button type="submit" class="btn btn-primary" id="submitBtn">
-                        <span id="submitText">Submit</span>
-                        <span id="submitLoader" class="spinner-border spinner-border-sm d-none"></span>
-                    </button>
-                </div>
-            </form>
+            <div id="imagePreviewContainer" class="image-preview-wrapper d-none">
+                <img id="imagePreview" src="" alt="Preview" class="image-preview-thumb">
+                <button type="button" class="btn btn-sm btn-danger btn-remove-preview" id="removeImageBtn" title="Remove selected image">
+                    <i data-lucide="x" class="fs-12"></i>
+                </button>
+            </div>
         </div>
     </div>
-</div>
+<?php };
+include BASE_PATH . '/component/modal.php';
+?>
 
-<div class="row g-4">
-    <div class="col-12">
-        <div class="card">
-            <div class="card-header">
-                <h6 class="mb-0"><?= $pageNm; ?></h6>
-            </div>
-            <div class="card-body">
-                <div class="table-responsive">
-                    <table class="table table-hover table-bordered align-middle table-striped mb-0 data-table" data-ajaxurl="<?= SITE_URL ?>admin/submaster/expense-category/ajax.php">
-                        <thead>
-                            <tr>
-                                <th>Sr No.</th>
-                                <?php if ($isSuperadmin): ?>
-                                    <th>Company Name</th>
-                                <?php endif; ?>
-                                <th>Category Name</th>
-                                <th>Image</th>
-                                <th>Status</th>
-                                <th>Action</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
+<?php
+$ajaxUrl = SITE_URL . 'admin/submaster/expense-category/ajax.php';
+$tableHeaders = ['Sr No.'];
+if ($isSuperadmin) {
+    $tableHeaders[] = 'Company Name';
+}
+$tableHeaders = array_merge($tableHeaders, [
+    'Category Name',
+    'Image',
+    'Status',
+    'Action'
+]);
+include BASE_PATH . '/component/datatable.php';
+?>
 
 <?php
 include BASE_PATH . '/include/footer.php';
@@ -175,24 +123,6 @@ include BASE_PATH . '/include/footer.php';
             $('#imagePreviewContainer').addClass('d-none');
         });
 
-        // Open Add Modal
-        $(document).on('click', '.open_modal', function() {
-            $('#id').val('');
-            $('#name').val('');
-            $('#remove_image').val('0');
-            if (isSuperadmin) {
-                setCompanySelectValue('');
-            }
-            $('#expenseCategoryImageInput').val('');
-            $('#imageFileNameDisplay').val('No File Selected');
-            $('#imagePreview').attr('src', '');
-            $('#imagePreviewContainer').addClass('d-none');
-            $('#ExpenseCategoryModalLabel').text('Add <?= $pageNm ?>');
-            $('#expenseCategoryForm').validate().resetForm();
-            $("#ExpenseCategoryModal").modal("show");
-        });
-
-        // Validate Form
         let validationRules = {
             name: {
                 required: true,
@@ -213,104 +143,45 @@ include BASE_PATH . '/include/footer.php';
             validationMessages.company_id = { required: "Please select a company" };
         }
 
-        $("#expenseCategoryForm").validate({
+        initMasterModalCrud({
+            modalId: '#ExpenseCategoryModal',
+            formId: '#expenseCategoryForm',
+            storeUrl: SITE_URL + 'admin/submaster/expense-category/store.php',
+            pageNm: '<?= $pageNm ?>',
+            editBtn: '.expense_category_edit',
             rules: validationRules,
             messages: validationMessages,
-            errorElement: "span",
-            errorClass: "text-danger",
-            submitHandler: function(form) {
-                let formData = new FormData(form);
-                let $button = $("#submitBtn");
-                let $text = $("#submitText");
-                let $loader = $("#submitLoader");
-
-                $.ajax({
-                    url: SITE_URL + "admin/submaster/expense-category/store.php",
-                    type: "POST",
-                    data: formData,
-                    contentType: false,
-                    processData: false,
-                    dataType: "json",
-                    beforeSend: function() {
-                        $button.prop("disabled", true);
-                        $text.text("Saving...");
-                        $loader.removeClass("d-none");
-                    },
-                    success: function(response) {
-                        if (response.status === true) {
-                            showToast(response.message, "success");
-                            $('#id').val('');
-                            $('#name').val('');
-                            if (isSuperadmin) {
-                                setCompanySelectValue('');
-                            }
-                            $('#expenseCategoryImageInput').val('');
-                            $('#imageFileNameDisplay').val('No File Selected');
-                            $('#imagePreviewContainer').addClass('d-none');
-                            form.reset();
-                            $(form).validate().resetForm();
-                            $("#ExpenseCategoryModal").modal("hide");
-                            $(".data-table").DataTable().ajax.reload(null, false);
-                        } else {
-                            showToast(response.message, "error");
-                        }
-                    },
-                    error: function() {
-                        showToast("Something went wrong. Please try again.", "error");
-                    },
-                    complete: function() {
-                        $button.prop("disabled", false);
-                        $text.text("Submit");
-                        $loader.addClass("d-none");
-                    }
-                });
-            }
-        });
-
-        // Edit Expense Category
-        $(document).on('click', '.expense_category_edit', function() {
-            var id = $(this).data('id');
-            $.ajax({
-                url: SITE_URL + 'admin/submaster/expense-category/store.php',
-                type: 'GET',
-                data: {
-                    id: id,
-                    action: 'edit'
-                },
-                dataType: 'json',
-                success: function(response) {
-                    if (response.status === true) {
-                        $('#id').val(response.data.id);
-                        $('#name').val(response.data.name);
-                        $('#remove_image').val('0');
-                        $('#ExpenseCategoryModalLabel').text('Edit <?= $pageNm ?>');
-
-                        if (isSuperadmin) {
-                            setCompanySelectValue(response.data.company_id);
-                        }
-
-                        if (response.data.image && response.data.image_url) {
-                            $('#imageFileNameDisplay').val(response.data.image);
-                            $('#imagePreview').attr('src', response.data.image_url);
-                            $('#imagePreviewContainer').removeClass('d-none');
-                        } else {
-                            $('#imageFileNameDisplay').val('No File Selected');
-                            $('#imagePreview').attr('src', '');
-                            $('#imagePreviewContainer').addClass('d-none');
-                        }
-                        $('#expenseCategoryImageInput').val('');
-
-                        $("#ExpenseCategoryModal").modal("show");
-                        if (window.lucide) lucide.createIcons();
-                    } else {
-                        showToast(response.message, 'error');
-                    }
-                },
-                error: function(xhr) {
-                    console.log(xhr.responseText);
-                    showToast('Something went wrong. Please try again.', 'error');
+            onReset: function() {
+                $('#remove_image').val('0');
+                if (isSuperadmin) {
+                    setCompanySelectValue('');
                 }
-            });
+                $('#expenseCategoryImageInput').val('');
+                $('#imageFileNameDisplay').val('No File Selected');
+                $('#imagePreview').attr('src', '');
+                $('#imagePreviewContainer').addClass('d-none');
+            },
+            onEditPopulate: function(rec) {
+                $('#remove_image').val('0');
+                if (isSuperadmin) {
+                    setCompanySelectValue(rec.company_id);
+                }
+                if (rec.image && rec.image_url) {
+                    $('#imageFileNameDisplay').val(rec.image);
+                    $('#imagePreview').attr('src', rec.image_url);
+                    $('#imagePreviewContainer').removeClass('d-none');
+                } else {
+                    $('#imageFileNameDisplay').val('No File Selected');
+                    $('#imagePreview').attr('src', '');
+                    $('#imagePreviewContainer').addClass('d-none');
+                }
+                $('#expenseCategoryImageInput').val('');
+            },
+            onSuccess: function() {
+                $('#expenseCategoryImageInput').val('');
+                $('#imageFileNameDisplay').val('No File Selected');
+                $('#imagePreviewContainer').addClass('d-none');
+            }
         });
     });
 </script>

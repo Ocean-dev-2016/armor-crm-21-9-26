@@ -30,3 +30,4 @@
 <script src="<?= SITE_URL ?>assets/libs/sweetalert2/sweetalert2.all.min.js"></script>
 <script src="<?= SITE_URL ?>assets/js/components/wizard.js"></script>
 <script src="<?= SITE_URL ?>assets/js/components/common.js"></script>
+<script src="<?= SITE_URL ?>assets/js/components/master-modal-crud.js"></script>

@@ -17,63 +17,46 @@ $module = 'module';
 include BASE_PATH . '/component/breadcrumb.php';
 ?>
 
-<div class="modal fade" id="ModuleModal" tabindex="-1" aria-labelledby="ModuleModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h1 class="modal-title fs-16" id="ModuleModalLabel">
-                    Add <?= $pageNm; ?>
-                </h1>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <form id="moduleForm" method="POST">
-                <div class="modal-body">
-                    <input type="hidden" name="id" id="id">
-                    <div class="row g-3">
-                        <div class="col-md-12">
-                            <div class="mb-1">
-                                <label class="form-label">Parent</label>
-                                <select name="parent_id" id="select-single" class="form-select parent_id">
-                                    <option value="">Select a Parent...</option>
-                                    <?php foreach ($parent_modules as $val) { ?>
-                                        <option value="<?= $val['id'] ?>">
-                                            <?= htmlspecialchars($val['name']) ?>
-                                        </option>
-                                    <?php } ?>
-                                </select>
-                            </div>
-                        </div>
-                        <div class="col-md-12">
-                            <div class="mb-1">
-                                <label class="form-label">Name</label>
-                                <input type="text" name="name" id="name" class="form-control" placeholder="Enter <?= $pageNm ?> Name">
-                            </div>
-                        </div>
-                        <div class="col-md-12">
-                            <div class="mb-1">
-                                <label class="form-label">Icon</label>
-                                <input type="text" name="icon" id="icon" class="form-control" placeholder="Enter <?= $pageNm ?> Icon">
-                            </div>
-                        </div>
-                        <div class="col-md-12">
-                            <div class="mb-1">
-                                <label class="form-label">Route</label>
-                                <input type="text" name="route" id="route" class="form-control" placeholder="Enter <?= $pageNm ?> Route">
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                    <button type="submit" class="btn btn-primary" id="submitBtn">
-                        <span id="submitText">Submit</span>
-                        <span id="submitLoader" class="spinner-border spinner-border-sm d-none"></span>
-                    </button>
-                </div>
-            </form>
+<!-- Module Modal -->
+<?php
+$modalId = 'ModuleModal';
+$formId = 'moduleForm';
+$hideNameField = true;
+$modalBodyContent = function() use ($parent_modules, $pageNm) { ?>
+    <div class="col-md-12">
+        <div class="mb-1">
+            <label class="form-label">Parent</label>
+            <select name="parent_id" id="select-single" class="form-select parent_id">
+                <option value="">Select a Parent...</option>
+                <?php foreach ($parent_modules as $val) { ?>
+                    <option value="<?= $val['id'] ?>">
+                        <?= htmlspecialchars($val['name']) ?>
+                    </option>
+                <?php } ?>
+            </select>
         </div>
     </div>
-</div>
+    <div class="col-md-12">
+        <div class="mb-1">
+            <label class="form-label">Name</label>
+            <input type="text" name="name" id="name" class="form-control" placeholder="Enter <?= $pageNm ?> Name">
+        </div>
+    </div>
+    <div class="col-md-12">
+        <div class="mb-1">
+            <label class="form-label">Icon</label>
+            <input type="text" name="icon" id="icon" class="form-control" placeholder="Enter <?= $pageNm ?> Icon">
+        </div>
+    </div>
+    <div class="col-md-12">
+        <div class="mb-1">
+            <label class="form-label">Route</label>
+            <input type="text" name="route" id="route" class="form-control" placeholder="Enter <?= $pageNm ?> Route">
+        </div>
+    </div>
+<?php };
+include BASE_PATH . '/component/modal.php';
+?>
 
 <!-- Change Position Modal -->
 <div class="modal fade" id="ChangePositionModal" tabindex="-1" aria-labelledby="ChangePositionModalLabel" aria-hidden="true">
@@ -130,58 +113,38 @@ include BASE_PATH . '/component/breadcrumb.php';
     </div>
 </div>
 
-<div class="row g-4">
-    <div class="col-12">
-        <div class="card">
-            <div class="card-header d-flex justify-content-between align-items-center">
-                <h6 class="mb-0"><?= $pageNm; ?></h6>
-                <button type="button" class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#ChangePositionModal">
-                    <i data-lucide="move" class="me-1 fs-14"></i> Change Position
-                </button>
-            </div>
-            <div class="card-body">
-                <div class="table-responsive">
-                    <table class="table table-hover table-bordered align-middle table-striped mb-0 data-table" data-ajaxurl="<?= SITE_URL ?>admin/setting/module/ajax.php">
-                        <thead>
-                            <tr>
-                                <th>Sr No.</th>
-                                <th>Name</th>
-                                <th>Action</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
+<?php
+$ajaxUrl = SITE_URL . 'admin/setting/module/ajax.php';
+$tableHeaders = ['Sr No.', 'Name', 'Action'];
+$cardHeaderRight = '
+    <button type="button" class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#ChangePositionModal">
+        <i data-lucide="move" class="me-1 fs-14"></i> Change Position
+    </button>
+';
+include BASE_PATH . '/component/datatable.php';
+?>
 
 <?php
 include BASE_PATH . '/include/footer.php';
 ?>
 <script>
-    function setParentValue(val) {
-        $('#select-single').each(function() {
-            if (this.tomselect) {
-                this.tomselect.setValue(val || '');
-            } else {
-                $(this).val(val || '').trigger('change');
-            }
-        });
-    }
-
-     $(document).on('click', '.open_modal', function(){
-        $('#id').val('');
-        $('#name').val('');
-        $('#icon').val('');
-        $('#route').val('');
-        setParentValue('');
-        $("#ModuleModal").modal("show");
-    });
     $(document).ready(function() {
-        $("#moduleForm").validate({
+        function setParentValue(val) {
+            $('#select-single').each(function() {
+                if (this.tomselect) {
+                    this.tomselect.setValue(val || '');
+                } else {
+                    $(this).val(val || '').trigger('change');
+                }
+            });
+        }
+
+        initMasterModalCrud({
+            modalId: '#ModuleModal',
+            formId: '#moduleForm',
+            storeUrl: 'admin/setting/module/store.php',
+            pageNm: '<?= $pageNm ?>',
+            editBtn: '.module_edit',
             rules: {
                 parent_id: {
                     required: false
@@ -210,88 +173,21 @@ include BASE_PATH . '/include/footer.php';
                     required: "Please enter module route",
                 }
             },
-            errorElement: "span",
-            errorClass: "text-danger",
-            submitHandler: function(form) {
-                let $form = $(form);
-                let $button = $("#submitBtn");
-                let $text = $("#submitText");
-                let $loader = $("#submitLoader");
-                $.ajax({
-                    url: "admin/setting/module/store.php",
-                    type: "POST",
-                    data: $form.serialize(),
-                    dataType: "json",
-                    beforeSend: function() {
-                        $button.prop("disabled", true);
-                        $text.text("Saving...");
-                        $loader.removeClass("d-none");
-                    },
-                    success: function(response) {
-                        console.log("AJAX response:", response);
-
-                        if (response.status === true) {
-
-                        showToast(
-                            response.message,
-                            "success"
-                        );
-                            showToast(response.message, "success");
-                            $form[0].reset();
-                            $form.validate().resetForm();
-                            $("#ModuleModal").modal("hide");
-                            $(".data-table").DataTable().ajax.reload(null, false);
-                            setTimeout(function() {
-                                window.location.href = "<?= SITE_URL ?>module";
-                            }, 1000);
-                        } else {
-                            showToast(response.message, "error");
-                        }
-                    },
-                    error: function(xhr) {
-                        showToast("Something went wrong. Please try again.", "error");
-                    },
-                    complete: function() {
-                        $button.prop("disabled", false);
-                        $text.text("Submit");
-                        $loader.addClass("d-none");
-                    }
-                });
-                //return false;
-            }
-        });
-
-        $(document).on('click', '.module_edit', function(){
-            var id = $(this).data('id');
-            $.ajax({
-                url: 'admin/setting/module/store.php',
-                type: 'GET',
-                data: {
-                    id: id,
-                    action: 'edit',
-                },
-                dataType: 'json',
-                success: function (response) {
-                    console.log(response)
-                    $('#id').val(response.data.id);
-                    $('#name').val(response.data.name);
-                    $('#icon').val(response.data.icon);
-                    $('#route').val(response.data.route);
-                    if(response.data.parent_id != 0)
-                    {                        
-                        setParentValue(response.data.parent_id);
-                    }
-                    else
-                    {
-                        setParentValue('');
-                    }
-                    $("#ModuleModal").modal("show");
-                },
-                error: function (xhr) {
-                    console.log(xhr.responseText);
-                    showToast('Something went wrong. Please try again.', 'error');
+            onReset: function() {
+                setParentValue('');
+            },
+            onEditPopulate: function(rec) {
+                if (rec.parent_id && rec.parent_id != 0) {
+                    setParentValue(rec.parent_id);
+                } else {
+                    setParentValue('');
                 }
-            });
+            },
+            onSuccess: function() {
+                setTimeout(function() {
+                    window.location.href = "<?= SITE_URL ?>module";
+                }, 1000);
+            }
         });
 
         // Change Position Modal Logic
@@ -366,10 +262,8 @@ include BASE_PATH . '/include/footer.php';
                     $loading.addClass('d-none');
                     if (res.status && res.data && res.data.length > 0) {
                         res.data.forEach(function(item) {
-                            // var iconHtml = item.icon ? '<i data-lucide="' + item.icon + '" class="fs-16 me-2 text-primary"></i>' : '<i data-lucide="circle-dot" class="fs-14 me-2 text-muted"></i>';
-                            // var routeHtml = item.route ? '<small class="text-muted ms-auto">(' + item.route + ')</small>' : '';
                             var li = '<li class="list-group-item d-flex align-items-center py-2 px-3 mb-1 border rounded shadow-none" style="cursor: grab;" data-id="' + item.id + '">' +
-                                '<i data-lucide="grip-vertical" class="text-muted me-2 drag-handle" style="cursor: grab;"></i>' +
+                                '<i data-lucide="move" class="text-muted fs-20 me-3 drag-handle" style="cursor: grab;"></i>' +
                                 '<span class="fw-medium text-dark">' + item.name + '</span>' +
                             '</li>';
                             $list.append(li);

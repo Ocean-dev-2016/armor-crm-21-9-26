@@ -5,16 +5,27 @@ error_reporting(E_ALL);
 
 // Application
 define('APP_NAME', 'Armor CRM');
-
-// Website URL
-define('SITE_URL', 'http://localhost/armor/');
-//define('FOLDER_URL', 'http://localhost/armor/admin/');
 define('BASE_PATH', dirname(__DIR__));
 
-define('DB_HOST', 'localhost');
-define('DB_USER', 'root');
-define('DB_PASS', '');
-define('DB_DATABASE', 'armor_crm_live');
+// Check if running on localhost / local environment
+$httpHost = $_SERVER['HTTP_HOST'] ?? 'localhost';
+$isLocal = in_array($httpHost, ['localhost', '127.0.0.1', '::1']) || strpos($httpHost, 'localhost:') === 0;
+
+if ($isLocal) {
+    define('SITE_URL', 'http://localhost/armor/');
+
+    define('DB_HOST', 'localhost');
+    define('DB_USER', 'root');
+    define('DB_PASS', '');
+    define('DB_DATABASE', 'armor_crm_live');
+} else {
+    define('SITE_URL', 'https://newcrm.oceanhub.co.in/');
+
+    define('DB_HOST', 'localhost');
+    define('DB_USER', 'jrosvllq_newcrm_26_09');      
+    define('DB_PASS', '9s4sreIC!zV4mfh_');  
+    define('DB_DATABASE', 'jrosvllq_newcrm_26_09');   
+}
 
 $conn = mysqli_connect(
     DB_HOST,

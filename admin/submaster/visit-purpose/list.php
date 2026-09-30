@@ -24,89 +24,28 @@ if ($isSuperadmin) {
 ?>
 
 <!-- Visit Purpose Modal -->
-<div class="modal fade" id="VisitPurposeModal" tabindex="-1" aria-labelledby="VisitPurposeModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h1 class="modal-title fs-16" id="VisitPurposeModalLabel">
-                    Add <?= $pageNm; ?>
-                </h1>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <form id="visitPurposeForm" method="POST">
-                <div class="modal-body">
-                    <input type="hidden" name="id" id="id">
-                    <div class="row g-3">
-                        <?php if ($isSuperadmin): ?>
-                        <div class="col-md-12">
-                            <div class="mb-3">
-                                <label class="form-label">Company</label>
-                                <select name="company_id" id="select-company" class="form-select company_id">
-                                    <option value="">Select a Company</option>
-                                    <?php foreach ($companies as $c): ?>
-                                        <option value="<?= $c['id'] ?>">
-                                            <?= htmlspecialchars($c['name']) ?>
-                                        </option>
-                                    <?php endforeach; ?>
-                                </select>
-                            </div>
-                        </div>
-                        <?php endif; ?>
-                        <div class="col-md-12">
-                            <div class="mb-3">
-                                <label class="form-label">Name</label>
-                                <input type="text" name="name" id="name" class="form-control" placeholder="Enter <?= $pageNm ?> Name">
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                    <button type="submit" class="btn btn-primary" id="submitBtn">
-                        <span id="submitText">Submit</span>
-                        <span id="submitLoader" class="spinner-border spinner-border-sm d-none"></span>
-                    </button>
-                </div>
-            </form>
-        </div>
-    </div>
-</div>
+<?php
+$modalId = 'VisitPurposeModal';
+$formId = 'visitPurposeForm';
+$includeCompanySelect = true;
+include BASE_PATH . '/component/modal.php';
+?>
 
-<div class="row g-4">
-    <div class="col-12">
-        <div class="card">
-            <div class="card-header">
-                <h6 class="mb-0"><?= $pageNm; ?></h6>
-            </div>
-            <div class="card-body">
-                <div class="table-responsive">
-                    <table class="table table-hover table-bordered align-middle table-striped mb-0 data-table" data-ajaxurl="<?= SITE_URL ?>admin/submaster/visit-purpose/ajax.php">
-                        <thead>
-                            <tr>
-                                <th>Sr No.</th>
-                                <?php if ($isSuperadmin): ?>
-                                    <th>Company Name</th>
-                                <?php endif; ?>
-                                <th>Name</th>
-                                <th>Status</th>
-                                <th>Action</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
+<?php
+$ajaxUrl = SITE_URL . 'admin/submaster/visit-purpose/ajax.php';
+$tableHeaders = ['Sr No.'];
+if ($isSuperadmin) {
+    $tableHeaders[] = 'Company Name';
+}
+$tableHeaders = array_merge($tableHeaders, ['Name', 'Status', 'Action']);
+include BASE_PATH . '/component/datatable.php';
+?>
 
 <?php
 include BASE_PATH . '/include/footer.php';
 ?>
 <script>
     $(document).ready(function() {
-
         let isSuperadmin = <?= $isSuperadmin ? 'true' : 'false' ?>;
 
         function setCompanySelectValue(val) {
@@ -125,19 +64,6 @@ include BASE_PATH . '/include/footer.php';
             });
         }
 
-        // Open Add Modal
-        $(document).on('click', '.open_modal', function() {
-            $('#id').val('');
-            $('#name').val('');
-            if (isSuperadmin) {
-                setCompanySelectValue('');
-            }
-            $('#VisitPurposeModalLabel').text('Add <?= $pageNm ?>');
-            $('#visitPurposeForm').validate().resetForm();
-            $("#VisitPurposeModal").modal("show");
-        });
-
-        // Form Validation
         let validationRules = {
             name: {
                 required: true,
@@ -158,87 +84,24 @@ include BASE_PATH . '/include/footer.php';
             validationMessages.company_id = { required: "Please select a company" };
         }
 
-        $("#visitPurposeForm").validate({
+        initMasterModalCrud({
+            modalId: '#VisitPurposeModal',
+            formId: '#visitPurposeForm',
+            storeUrl: SITE_URL + 'admin/submaster/visit-purpose/store.php',
+            pageNm: '<?= $pageNm ?>',
+            editBtn: '.visit_purpose_edit',
             rules: validationRules,
             messages: validationMessages,
-            errorElement: "span",
-            errorClass: "text-danger",
-            submitHandler: function(form) {
-                let $form = $(form);
-                let $button = $("#submitBtn");
-                let $text = $("#submitText");
-                let $loader = $("#submitLoader");
-
-                $.ajax({
-                    url: SITE_URL + "admin/submaster/visit-purpose/store.php",
-                    type: "POST",
-                    data: $form.serialize(),
-                    dataType: "json",
-                    beforeSend: function() {
-                        $button.prop("disabled", true);
-                        $text.text("Saving...");
-                        $loader.removeClass("d-none");
-                    },
-                    success: function(response) {
-                        if (response.status === true) {
-                            showToast(response.message, "success");
-                            $('#id').val('');
-                            $('#name').val('');
-                            if (isSuperadmin) {
-                                setCompanySelectValue('');
-                            }
-                            form.reset();
-                            $(form).validate().resetForm();
-                            $("#VisitPurposeModal").modal("hide");
-                            $(".data-table").DataTable().ajax.reload(null, false);
-                        } else {
-                            showToast(response.message, "error");
-                        }
-                    },
-                    error: function() {
-                        showToast("Something went wrong. Please try again.", "error");
-                    },
-                    complete: function() {
-                        $button.prop("disabled", false);
-                        $text.text("Submit");
-                        $loader.addClass("d-none");
-                    }
-                });
-            }
-        });
-
-        // Edit Visit Purpose
-        $(document).on('click', '.visit_purpose_edit', function() {
-            var id = $(this).data('id');
-            $.ajax({
-                url: SITE_URL + 'admin/submaster/visit-purpose/store.php',
-                type: 'GET',
-                data: {
-                    id: id,
-                    action: 'edit'
-                },
-                dataType: 'json',
-                success: function(response) {
-                    if (response.status === true) {
-                        $('#id').val(response.data.id);
-                        $('#name').val(response.data.name);
-                        $('#VisitPurposeModalLabel').text('Edit <?= $pageNm ?>');
-
-                        if (isSuperadmin) {
-                            setCompanySelectValue(response.data.company_id);
-                        }
-
-                        $("#VisitPurposeModal").modal("show");
-                        if (window.lucide) lucide.createIcons();
-                    } else {
-                        showToast(response.message, 'error');
-                    }
-                },
-                error: function(xhr) {
-                    console.log(xhr.responseText);
-                    showToast('Something went wrong. Please try again.', 'error');
+            onReset: function() {
+                if (isSuperadmin) {
+                    setCompanySelectValue('');
                 }
-            });
+            },
+            onEditPopulate: function(rec) {
+                if (isSuperadmin) {
+                    setCompanySelectValue(rec.company_id);
+                }
+            }
         });
     });
 </script>
