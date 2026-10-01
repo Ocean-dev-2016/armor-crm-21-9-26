@@ -45,6 +45,10 @@ if (!empty($superadminBranding['header_logo']) && file_exists(BASE_PATH . '/uplo
 $headerCompanyLogo = $defaultCompanyLogo;
 if (!empty($headerCompany['header_image']) && file_exists(BASE_PATH . '/uploads/company/' . $headerCompany['header_image'])) {
   $headerCompanyLogo = SITE_URL . 'uploads/company/' . $headerCompany['header_image'];
+} elseif (!empty($headerCompany['app_logo']) && file_exists(BASE_PATH . '/uploads/company/' . $headerCompany['app_logo'])) {
+  $headerCompanyLogo = SITE_URL . 'uploads/company/' . $headerCompany['app_logo'];
+} else {
+  $headerCompanyLogo = $defaultCompanyLogo;
 }
 
 // Company Favicon (with default fallback)
@@ -55,8 +59,12 @@ if (!empty($superadminBranding['favicon']) && file_exists(BASE_PATH . '/uploads/
 $headerFavicon = $defaultFavicon;
 if (!empty($headerCompany['favicon']) && file_exists(BASE_PATH . '/uploads/company/' . $headerCompany['favicon'])) {
   $headerFavicon = SITE_URL . 'uploads/company/' . $headerCompany['favicon'];
+} elseif (!empty($headerCompany['app_logo']) && file_exists(BASE_PATH . '/uploads/company/' . $headerCompany['app_logo'])) {
+  $headerFavicon = SITE_URL . 'uploads/company/' . $headerCompany['app_logo'];
 } elseif ($headerCompanyLogo !== $defaultCompanyLogo) {
   $headerFavicon = $headerCompanyLogo;
+} else {
+  $headerFavicon = $defaultFavicon;
 }
 
 $isSuperadmin = isset($_SESSION['user_type']) && $_SESSION['user_type'] === 'superadmin';

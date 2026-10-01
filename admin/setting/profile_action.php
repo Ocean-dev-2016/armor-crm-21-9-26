@@ -86,22 +86,43 @@ if ($action === 'update_logo') {
     exit;
 }
 
-// 1.1 UPDATE SUPERADMIN BRANDING (Login Logo, Header Logo, Favicon)
-if ($action === 'update_superadmin_branding') {
-    if (($user['user_type'] ?? '') !== 'superadmin') {
+// 1.1 UPDATE BRANDING (Login Logo, Header Logo, Favicon)
+// If Superadmin -> updates users table (system branding)
+// If Company User -> updates company table (company branding)
+if ($action === 'update_branding' || $action === 'update_superadmin_branding') {
+    $isSuper = ($user['user_type'] ?? '') === 'superadmin';
+    $companyId = (int)($user['company_id'] ?? 0);
+
+    if (!$isSuper && $companyId <= 0) {
         echo json_encode([
             'status' => false,
-            'message' => 'Unauthorized access.'
+            'message' => 'No associated company found for this user.'
         ]);
         exit;
     }
 
-    $uploadDir = BASE_PATH . '/uploads/system/';
+    $uploadDir = $isSuper ? (BASE_PATH . '/uploads/system/') : (BASE_PATH . '/uploads/company/');
+    if (!is_dir($uploadDir)) {
+        @mkdir($uploadDir, 0777, true);
+    }
+
     $allowedExtensions = ['jpg', 'jpeg', 'png', 'webp', 'ico'];
     $updates = [];
 
+    // Current values
+    if ($isSuper) {
+        $curLoginLogo = $user['login_logo'] ?? '';
+        $curHeaderLogo = $user['header_logo'] ?? '';
+        $curFavicon = $user['favicon'] ?? '';
+    } else {
+        $compRow = db_row("SELECT login_logo, header_image, favicon FROM company WHERE id = $companyId LIMIT 1");
+        $curLoginLogo = $compRow['login_logo'] ?? '';
+        $curHeaderLogo = $compRow['header_image'] ?? '';
+        $curFavicon = $compRow['favicon'] ?? '';
+    }
+
     // Helper for processing branding file upload
-    $processUpload = function($fileKey, $prefix, $currentVal, $removeKey) use ($uploadDir, $allowedExtensions, &$updates) {
+    $processUpload = function($fileKey, $targetCol, $prefix, $currentVal, $removeKey) use ($uploadDir, $allowedExtensions, &$updates) {
         $shouldRemove = isset($_POST[$removeKey]) && $_POST[$removeKey] == '1';
 
         if (isset($_FILES[$fileKey]) && $_FILES[$fileKey]['error'] === UPLOAD_ERR_OK) {
@@ -122,7 +143,7 @@ if ($action === 'update_superadmin_branding') {
                 if (!empty($currentVal) && file_exists($uploadDir . $currentVal)) {
                     @unlink($uploadDir . $currentVal);
                 }
-                $updates[$prefix] = $newFileName;
+                $updates[$targetCol] = $newFileName;
             } else {
                 return "Failed to save uploaded file for $prefix.";
             }
@@ -130,24 +151,28 @@ if ($action === 'update_superadmin_branding') {
             if (!empty($currentVal) && file_exists($uploadDir . $currentVal)) {
                 @unlink($uploadDir . $currentVal);
             }
-            $updates[$prefix] = null;
+            $updates[$targetCol] = null;
         }
         return true;
     };
 
-    $err = $processUpload('login_logo', 'login_logo', $user['login_logo'] ?? '', 'remove_login_logo');
+    // 1. Login Logo
+    $err = $processUpload('login_logo', 'login_logo', 'login_logo', $curLoginLogo, 'remove_login_logo');
     if ($err !== true) {
         echo json_encode(['status' => false, 'message' => $err]);
         exit;
     }
 
-    $err = $processUpload('header_logo', 'header_logo', $user['header_logo'] ?? '', 'remove_header_logo');
+    // 2. Header Logo (header_logo for superadmin in users table, header_image for company in company table)
+    $headerCol = $isSuper ? 'header_logo' : 'header_image';
+    $err = $processUpload('header_logo', $headerCol, 'header', $curHeaderLogo, 'remove_header_logo');
     if ($err !== true) {
         echo json_encode(['status' => false, 'message' => $err]);
         exit;
     }
 
-    $err = $processUpload('favicon', 'favicon', $user['favicon'] ?? '', 'remove_favicon');
+    // 3. Favicon
+    $err = $processUpload('favicon', 'favicon', 'favicon', $curFavicon, 'remove_favicon');
     if ($err !== true) {
         echo json_encode(['status' => false, 'message' => $err]);
         exit;
@@ -165,7 +190,12 @@ if ($action === 'update_superadmin_branding') {
         }
         $setParts[] = "updated_at = NOW()";
         $setSql = implode(', ', $setParts);
-        db_query("UPDATE users SET $setSql WHERE id = $userId");
+
+        if ($isSuper) {
+            db_query("UPDATE users SET $setSql WHERE id = $userId");
+        } else {
+            db_query("UPDATE company SET $setSql WHERE id = $companyId");
+        }
 
         echo json_encode([
             'status' => true,

@@ -27,11 +27,20 @@ if (!isset($headerCompanyLogo) || !isset($headerFavicon)) {
     $compFavRow = db_row("SELECT favicon, header_image, app_logo FROM company WHERE id = $cssCompId LIMIT 1");
     if (!empty($compFavRow['header_image']) && file_exists(BASE_PATH . '/uploads/company/' . $compFavRow['header_image'])) {
       $calcLogo = SITE_URL . 'uploads/company/' . $compFavRow['header_image'];
+    } elseif (!empty($compFavRow['app_logo']) && file_exists(BASE_PATH . '/uploads/company/' . $compFavRow['app_logo'])) {
+      $calcLogo = SITE_URL . 'uploads/company/' . $compFavRow['app_logo'];
+    } else {
+      $calcLogo = $defaultCompanyLogo;
     }
+
     if (!empty($compFavRow['favicon']) && file_exists(BASE_PATH . '/uploads/company/' . $compFavRow['favicon'])) {
       $calcFavicon = SITE_URL . 'uploads/company/' . $compFavRow['favicon'];
+    } elseif (!empty($compFavRow['app_logo']) && file_exists(BASE_PATH . '/uploads/company/' . $compFavRow['app_logo'])) {
+      $calcFavicon = SITE_URL . 'uploads/company/' . $compFavRow['app_logo'];
     } elseif ($calcLogo !== $defaultCompanyLogo) {
       $calcFavicon = $calcLogo;
+    } else {
+      $calcFavicon = $defaultFavicon;
     }
   }
 

@@ -18,8 +18,8 @@ if (!empty($loginBranding['login_logo']) && file_exists(BASE_PATH . '/uploads/sy
         <div class="card border-0 shadow-lg p-4">
           <div class="card-body">
             <div class="text-center mb-4">
-              <div id="loginLogoWrapper" style="display: none; min-height: 50px;">
-                <img id="loginLogoImg" src="" alt="Logo" class="logo" style="max-height: 60px; object-fit: contain; transition: all 0.3s ease;">
+              <div id="loginLogoWrapper" style="min-height: 50px;">
+                <img id="loginLogoImg" src="<?= $loginLogoSrc ?>" alt="Logo" class="logo" style="max-height: 60px; object-fit: contain; transition: all 0.3s ease;">
               </div>
 
               <h5 class="mt-3">Login</h5>
@@ -169,17 +169,24 @@ if (!empty($loginBranding['login_logo']) && file_exists(BASE_PATH . '/uploads/sy
 
     // Dynamic Company Logo Detection on Email/Username input
     (function() {
+      const defaultLoginLogo = "<?= $loginLogoSrc ?>";
       const loginInput = document.getElementById("login");
       const logoWrapper = document.getElementById("loginLogoWrapper");
       const logoImg = document.getElementById("loginLogoImg");
       let debounceTimer = null;
       let lastFetchedValue = "";
 
+      function resetToDefaultLogo() {
+        if (logoImg.src !== defaultLoginLogo) {
+          logoImg.src = defaultLoginLogo;
+        }
+        logoWrapper.style.display = "block";
+      }
+
       function checkAndFetchLogo(value) {
         value = value.trim();
         if (value.length < 3) {
-          logoWrapper.style.display = "none";
-          logoImg.src = "";
+          resetToDefaultLogo();
           lastFetchedValue = "";
           return;
         }
@@ -191,18 +198,14 @@ if (!empty($loginBranding['login_logo']) && file_exists(BASE_PATH . '/uploads/sy
           .then(res => res.json())
           .then(data => {
             if (data && data.status === true && data.logo) {
-              logoImg.onload = function() {
-                logoWrapper.style.display = "block";
-              };
               logoImg.src = data.logo;
+              logoWrapper.style.display = "block";
             } else {
-              logoWrapper.style.display = "none";
-              logoImg.src = "";
+              resetToDefaultLogo();
             }
           })
           .catch(() => {
-            logoWrapper.style.display = "none";
-            logoImg.src = "";
+            resetToDefaultLogo();
           });
       }
 

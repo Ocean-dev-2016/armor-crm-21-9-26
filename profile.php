@@ -111,23 +111,50 @@ if (!empty($user['profile_img']) && file_exists(BASE_PATH . '/uploads/profile/' 
 
 $isSuperadmin = isset($_SESSION['user_type']) && $_SESSION['user_type'] === 'superadmin';
 
-// Superadmin Branding logos
-$superLoginLogoSrc = SITE_URL . 'assets/image/logo.png';
-$hasSuperLoginLogo = !empty($user['login_logo']) && file_exists(BASE_PATH . '/uploads/system/' . $user['login_logo']);
-if ($hasSuperLoginLogo) {
-    $superLoginLogoSrc = SITE_URL . 'uploads/system/' . $user['login_logo'];
-}
+// Determine Branding logos (Superadmin from user/system, other users from their company)
+if ($isSuperadmin) {
+    $brandingLoginLogoSrc = SITE_URL . 'assets/image/logo.png';
+    $hasBrandingLoginLogo = !empty($user['login_logo']) && file_exists(BASE_PATH . '/uploads/system/' . $user['login_logo']);
+    if ($hasBrandingLoginLogo) {
+        $brandingLoginLogoSrc = SITE_URL . 'uploads/system/' . $user['login_logo'];
+    }
 
-$superHeaderLogoSrc = SITE_URL . 'assets/image/crm_logo.png';
-$hasSuperHeaderLogo = !empty($user['header_logo']) && file_exists(BASE_PATH . '/uploads/system/' . $user['header_logo']);
-if ($hasSuperHeaderLogo) {
-    $superHeaderLogoSrc = SITE_URL . 'uploads/system/' . $user['header_logo'];
-}
+    $brandingHeaderLogoSrc = SITE_URL . 'assets/image/crm_logo.png';
+    $hasBrandingHeaderLogo = !empty($user['header_logo']) && file_exists(BASE_PATH . '/uploads/system/' . $user['header_logo']);
+    if ($hasBrandingHeaderLogo) {
+        $brandingHeaderLogoSrc = SITE_URL . 'uploads/system/' . $user['header_logo'];
+    }
 
-$superFaviconSrc = SITE_URL . 'assets/image/crm_logo.png';
-$hasSuperFavicon = !empty($user['favicon']) && file_exists(BASE_PATH . '/uploads/system/' . $user['favicon']);
-if ($hasSuperFavicon) {
-    $superFaviconSrc = SITE_URL . 'uploads/system/' . $user['favicon'];
+    $brandingFaviconSrc = SITE_URL . 'assets/image/crm_logo.png';
+    $hasBrandingFavicon = !empty($user['favicon']) && file_exists(BASE_PATH . '/uploads/system/' . $user['favicon']);
+    if ($hasBrandingFavicon) {
+        $brandingFaviconSrc = SITE_URL . 'uploads/system/' . $user['favicon'];
+    }
+} else {
+    // For Company User
+    $brandingLoginLogoSrc = SITE_URL . 'assets/image/crm_logo.png';
+    $hasBrandingLoginLogo = !empty($company['login_logo']) && file_exists(BASE_PATH . '/uploads/company/' . $company['login_logo']);
+    if ($hasBrandingLoginLogo) {
+        $brandingLoginLogoSrc = SITE_URL . 'uploads/company/' . $company['login_logo'];
+    } elseif (!empty($company['app_logo']) && file_exists(BASE_PATH . '/uploads/company/' . $company['app_logo'])) {
+        $brandingLoginLogoSrc = SITE_URL . 'uploads/company/' . $company['app_logo'];
+    }
+
+    $brandingHeaderLogoSrc = SITE_URL . 'assets/image/crm_logo.png';
+    $hasBrandingHeaderLogo = !empty($company['header_image']) && file_exists(BASE_PATH . '/uploads/company/' . $company['header_image']);
+    if ($hasBrandingHeaderLogo) {
+        $brandingHeaderLogoSrc = SITE_URL . 'uploads/company/' . $company['header_image'];
+    } elseif (!empty($company['app_logo']) && file_exists(BASE_PATH . '/uploads/company/' . $company['app_logo'])) {
+        $brandingHeaderLogoSrc = SITE_URL . 'uploads/company/' . $company['app_logo'];
+    }
+
+    $brandingFaviconSrc = SITE_URL . 'assets/image/crm_logo.png';
+    $hasBrandingFavicon = !empty($company['favicon']) && file_exists(BASE_PATH . '/uploads/company/' . $company['favicon']);
+    if ($hasBrandingFavicon) {
+        $brandingFaviconSrc = SITE_URL . 'uploads/company/' . $company['favicon'];
+    } elseif (!empty($company['app_logo']) && file_exists(BASE_PATH . '/uploads/company/' . $company['app_logo'])) {
+        $brandingFaviconSrc = SITE_URL . 'uploads/company/' . $company['app_logo'];
+    }
 }
 ?>
 
@@ -173,11 +200,11 @@ if ($hasSuperFavicon) {
                                 <span>Account & Security</span>
                             </button>
                         </li>
-                        <?php if ($isSuperadmin): ?>
+                        <?php if ($isSuperadmin || !empty($company)): ?>
                             <li class="nav-item" role="presentation">
                                 <button class="nav-link d-flex align-items-center gap-2 py-2 px-3 fw-medium" id="tab-branding-btn" data-bs-toggle="tab" data-bs-target="#tab-branding" type="button" role="tab">
                                     <i data-lucide="image" class="fs-16"></i>
-                                    <span>System Branding</span>
+                                    <span><?= $isSuperadmin ? 'System Branding' : 'Company Branding' ?></span>
                                 </button>
                             </li>
                         <?php endif; ?>
@@ -362,8 +389,8 @@ if ($hasSuperFavicon) {
                             </div>
                         </div>
 
-                        <?php if ($isSuperadmin): ?>
-                            <!-- TAB 6: System Branding (Superadmin Only) -->
+                        <?php if ($isSuperadmin || !empty($company)): ?>
+                            <!-- TAB 6: Branding (Superadmin / Company) -->
                             <div class="tab-pane fade" id="tab-branding" role="tabpanel">
                                 <div class="row g-4">
                                     <!-- Login Logo Preview -->
@@ -372,7 +399,7 @@ if ($hasSuperFavicon) {
                                             <div class="card-body text-center p-3">
                                                 <div class="text-muted small fw-bold mb-2">Login Logo</div>
                                                 <div class="p-3 bg-light rounded border d-flex align-items-center justify-content-center mx-auto mb-2 branding-preview-box">
-                                                    <img src="<?= $superLoginLogoSrc ?>" alt="Login Logo" class="img-fluid branding-preview-login">
+                                                    <img src="<?= $brandingLoginLogoSrc ?>" alt="Login Logo" class="img-fluid branding-preview-login">
                                                 </div>
                                                 <small class="text-muted d-block">Displayed on the login screen</small>
                                             </div>
@@ -385,7 +412,7 @@ if ($hasSuperFavicon) {
                                             <div class="card-body text-center p-3">
                                                 <div class="text-muted small fw-bold mb-2">Header Logo</div>
                                                 <div class="p-3 bg-light rounded border d-flex align-items-center justify-content-center mx-auto mb-2 branding-preview-box">
-                                                    <img src="<?= $superHeaderLogoSrc ?>" alt="Header Logo" class="img-fluid branding-preview-header">
+                                                    <img src="<?= $brandingHeaderLogoSrc ?>" alt="Header Logo" class="img-fluid branding-preview-header">
                                                 </div>
                                                 <small class="text-muted d-block">Displayed on the top navigation bar</small>
                                             </div>
@@ -398,7 +425,7 @@ if ($hasSuperFavicon) {
                                             <div class="card-body text-center p-3">
                                                 <div class="text-muted small fw-bold mb-2">Favicon</div>
                                                 <div class="p-3 bg-light rounded border d-flex align-items-center justify-content-center mx-auto mb-2 branding-preview-box">
-                                                    <img src="<?= $superFaviconSrc ?>" alt="Favicon" class="img-fluid branding-preview-favicon">
+                                                    <img src="<?= $brandingFaviconSrc ?>" alt="Favicon" class="img-fluid branding-preview-favicon">
                                                 </div>
                                                 <small class="text-muted d-block">Displayed in browser tabs</small>
                                             </div>
@@ -500,15 +527,21 @@ if ($hasSuperFavicon) {
         </div>
     </div>
 
-    <?php if ($isSuperadmin): ?>
-        <!-- Superadmin Branding Settings (Login Logo, Header Logo, Favicon) -->
+    <?php if ($isSuperadmin || !empty($company)): ?>
+        <?php
+            $brandingTitle = $isSuperadmin ? 'System Settings for Superadmin' : 'Company Branding Settings';
+            $currentLoginLogoVal = $isSuperadmin ? ($user['login_logo'] ?? '') : ($company['login_logo'] ?? '');
+            $currentHeaderLogoVal = $isSuperadmin ? ($user['header_logo'] ?? '') : ($company['header_image'] ?? '');
+            $currentFaviconVal = $isSuperadmin ? ($user['favicon'] ?? '') : ($company['favicon'] ?? '');
+        ?>
+        <!-- Branding Settings (Login Logo, Header Logo, Favicon) -->
         <div class="row g-4 mt-1">
             <div class="col-12">
                 <div class="card">
                     <div class="card-header bg-white py-3 border-bottom">
                         <div class="d-flex align-items-center justify-content-between">
                             <div>
-                                <h6 class="mb-0 "> System Settings for Superadmin</h6>
+                                <h6 class="mb-0 "><?= htmlspecialchars($brandingTitle) ?></h6>
                             </div>
                         </div>
                     </div>
@@ -520,7 +553,7 @@ if ($hasSuperFavicon) {
                                     <label class="form-label fw-bold">Login Logo </label>
                                     <div class="input-group mb-2">
                                         <input type="text" class="form-control bg-light" id="loginLogoNameDisplay" 
-                                            value="<?= !empty($user['login_logo']) ? htmlspecialchars($user['login_logo']) : '' ?>" 
+                                            value="<?= !empty($currentLoginLogoVal) ? htmlspecialchars($currentLoginLogoVal) : '' ?>" 
                                             placeholder="No File Selected" readonly>
                                         <input type="file" name="login_logo" id="loginLogoInput" class="d-none" accept="image/png, image/jpeg, image/jpg, image/webp">
                                         <button class="btn btn-select-file" type="button" id="selectLoginLogoBtn">
@@ -529,8 +562,8 @@ if ($hasSuperFavicon) {
                                     </div>
                                     <input type="hidden" name="remove_login_logo" id="remove_login_logo" value="0">
                                     
-                                    <div id="loginLogoPreviewContainer" class="image-preview-wrapper mt-2 <?= $hasSuperLoginLogo ? '' : 'd-none' ?>">
-                                        <img id="loginLogoPreview" src="<?= $superLoginLogoSrc ?>" alt="Login Logo Preview" class="image-preview-thumb branding-thumb-lg">
+                                    <div id="loginLogoPreviewContainer" class="image-preview-wrapper mt-2 <?= $hasBrandingLoginLogo ? '' : 'd-none' ?>">
+                                        <img id="loginLogoPreview" src="<?= $brandingLoginLogoSrc ?>" alt="Login Logo Preview" class="image-preview-thumb branding-thumb-lg">
                                         <button type="button" class="btn btn-sm btn-danger btn-remove-preview" id="removeLoginLogoBtn" title="Remove image">
                                             <i data-lucide="x" class="fs-12"></i>
                                         </button>
@@ -542,7 +575,7 @@ if ($hasSuperFavicon) {
                                     <label class="form-label fw-bold">Header Logo </label>
                                     <div class="input-group mb-2">
                                         <input type="text" class="form-control bg-light" id="headerLogoNameDisplay" 
-                                            value="<?= !empty($user['header_logo']) ? htmlspecialchars($user['header_logo']) : '' ?>" 
+                                            value="<?= !empty($currentHeaderLogoVal) ? htmlspecialchars($currentHeaderLogoVal) : '' ?>" 
                                             placeholder="No File Selected" readonly>
                                         <input type="file" name="header_logo" id="headerLogoInput" class="d-none" accept="image/png, image/jpeg, image/jpg, image/webp">
                                         <button class="btn btn-select-file" type="button" id="selectHeaderLogoBtn">
@@ -551,8 +584,8 @@ if ($hasSuperFavicon) {
                                     </div>
                                     <input type="hidden" name="remove_header_logo" id="remove_header_logo" value="0">
                                     
-                                    <div id="headerLogoPreviewContainer" class="image-preview-wrapper mt-2 <?= $hasSuperHeaderLogo ? '' : 'd-none' ?>">
-                                        <img id="headerLogoPreview" src="<?= $superHeaderLogoSrc ?>" alt="Header Logo Preview" class="image-preview-thumb branding-thumb-lg">
+                                    <div id="headerLogoPreviewContainer" class="image-preview-wrapper mt-2 <?= $hasBrandingHeaderLogo ? '' : 'd-none' ?>">
+                                        <img id="headerLogoPreview" src="<?= $brandingHeaderLogoSrc ?>" alt="Header Logo Preview" class="image-preview-thumb branding-thumb-lg">
                                         <button type="button" class="btn btn-sm btn-danger btn-remove-preview" id="removeHeaderLogoBtn" title="Remove image">
                                             <i data-lucide="x" class="fs-12"></i>
                                         </button>
@@ -564,7 +597,7 @@ if ($hasSuperFavicon) {
                                     <label class="form-label fw-bold">Favicon </label>
                                     <div class="input-group mb-2">
                                         <input type="text" class="form-control bg-light" id="faviconNameDisplay" 
-                                            value="<?= !empty($user['favicon']) ? htmlspecialchars($user['favicon']) : '' ?>" 
+                                            value="<?= !empty($currentFaviconVal) ? htmlspecialchars($currentFaviconVal) : '' ?>" 
                                             placeholder="No File Selected" readonly>
                                         <input type="file" name="favicon" id="faviconInput" class="d-none" accept="image/png, image/jpeg, image/jpg, image/webp, image/x-icon, image/vnd.microsoft.icon">
                                         <button class="btn btn-select-file" type="button" id="selectFaviconBtn">
@@ -573,8 +606,8 @@ if ($hasSuperFavicon) {
                                     </div>
                                     <input type="hidden" name="remove_favicon" id="remove_favicon" value="0">
                                     
-                                    <div id="faviconPreviewContainer" class="image-preview-wrapper mt-2 <?= $hasSuperFavicon ? '' : 'd-none' ?>">
-                                        <img id="faviconPreview" src="<?= $superFaviconSrc ?>" alt="Favicon Preview" class="image-preview-thumb branding-thumb-fav">
+                                    <div id="faviconPreviewContainer" class="image-preview-wrapper mt-2 <?= $hasBrandingFavicon ? '' : 'd-none' ?>">
+                                        <img id="faviconPreview" src="<?= $brandingFaviconSrc ?>" alt="Favicon Preview" class="image-preview-thumb branding-thumb-fav">
                                         <button type="button" class="btn btn-sm btn-danger btn-remove-preview" id="removeFaviconBtn" title="Remove icon">
                                             <i data-lucide="x" class="fs-12"></i>
                                         </button>
@@ -796,8 +829,8 @@ include BASE_PATH . '/include/footer.php';
             }
         });
 
-        // 3. Superadmin System Branding Handlers
-        <?php if ($isSuperadmin && $isEdit): ?>
+        // 3. System / Company Branding Handlers
+        <?php if (($isSuperadmin || !empty($company)) && $isEdit): ?>
             function bindBrandingUploader(btnId, inputId, displayId, previewId, containerId, removeBtnId, removeHiddenId) {
                 $('#' + btnId).on('click', function() {
                     $('#' + inputId).trigger('click');
@@ -851,7 +884,7 @@ include BASE_PATH . '/include/footer.php';
             $('#brandingUploadForm').on('submit', function(e) {
                 e.preventDefault();
                 let formData = new FormData(this);
-                formData.append('action', 'update_superadmin_branding');
+                formData.append('action', 'update_branding');
 
                 let $btn = $('#saveBrandingBtn');
                 let origHtml = $btn.html();
