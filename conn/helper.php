@@ -66,17 +66,24 @@ function generate_slug($text)
 
 function formatDate($date, $toFormat = 'Y-m-d')
 {
-    if (empty($date)) {
+    if (empty($date) || $date === '0000-00-00' || $date === '0000-00-00 00:00:00') {
         return null;
     }
+
+    $dateObj = null;
 
     // Detect current format
     if (preg_match('/^\d{2}-\d{2}-\d{4}$/', $date)) {
         $dateObj = DateTime::createFromFormat('d-m-Y', $date);
     } elseif (preg_match('/^\d{4}-\d{2}-\d{2}$/', $date)) {
         $dateObj = DateTime::createFromFormat('Y-m-d', $date);
+    } elseif (preg_match('/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}(:\d{2})?$/', $date)) {
+        $dateObj = new DateTime($date);
     } else {
-        return null;
+        $ts = strtotime($date);
+        if ($ts !== false) {
+            $dateObj = (new DateTime())->setTimestamp($ts);
+        }
     }
 
     if (!$dateObj) {
@@ -319,5 +326,232 @@ function upload_and_convert_to_webp($file, $targetDir, $prefix = 'img', $quality
     imagedestroy($srcImg);
 
     return $saved ? $newFileName : false;
+}
+
+/**
+ * Lead Dynamic Helper Functions from DB Tables
+ */
+function get_lead_sources(): array
+{
+    $rows = db_rows("SELECT id, name FROM lead_source_of_inquiry WHERE status = 1 ORDER BY name ASC");
+    $list = [];
+    if (!empty($rows)) {
+        foreach ($rows as $r) {
+            $list[(int)$r['id']] = $r['name'];
+        }
+    }
+    return $list;
+}
+
+function get_lead_statuses(): array
+{
+    $rows = db_rows("SELECT id, name, color FROM lead_status WHERE status = 1 ORDER BY id ASC");
+    $list = [];
+    if (!empty($rows)) {
+        foreach ($rows as $r) {
+            $list[(int)$r['id']] = $r['name'];
+        }
+    }
+    return $list;
+}
+
+function get_lead_stages(): array
+{
+    return get_lead_statuses();
+}
+
+function get_lead_status_label($val): string
+{
+    if (empty($val)) return '-';
+    if (is_numeric($val)) {
+        $row = db_row("SELECT name FROM lead_status WHERE id = " . (int)$val . " LIMIT 1");
+        if (!empty($row['name'])) {
+            return $row['name'];
+        }
+    }
+    $row = db_row("SELECT name FROM lead_status WHERE LOWER(name) = '" . db_escape(strtolower((string)$val)) . "' LIMIT 1");
+    if (!empty($row['name'])) {
+        return $row['name'];
+    }
+    return ucfirst(str_replace('_', ' ', (string)$val));
+}
+
+function get_lead_stage_label($val): string
+{
+    return get_lead_status_label($val);
+}
+
+function get_lead_source_label($val): string
+{
+    if (empty($val)) return '-';
+    if (is_numeric($val)) {
+        $row = db_row("SELECT name FROM lead_source_of_inquiry WHERE id = " . (int)$val . " LIMIT 1");
+        if (!empty($row['name'])) {
+            return $row['name'];
+        }
+    }
+    return (string)$val;
+}
+
+function get_lead_status_color($val): string
+{
+    if (is_numeric($val)) {
+        $row = db_row("SELECT color FROM lead_status WHERE id = " . (int)$val . " LIMIT 1");
+        if (!empty($row['color'])) {
+            return $row['color'];
+        }
+    }
+    $row = db_row("SELECT color FROM lead_status WHERE LOWER(name) = '" . db_escape(strtolower((string)$val)) . "' LIMIT 1");
+    if (!empty($row['color'])) {
+        return $row['color'];
+    }
+    return '#0e5a6c';
+}
+
+function get_lead_stage_slug($val): string
+{
+    $label = get_lead_stage_label($val);
+    return strtolower(trim(preg_replace('/[^A-Za-z0-9-]+/', '_', $label), '_'));
+}
+
+function get_lead_team_size_label($val): string
+{
+    if (empty($val)) return '-';
+    if (is_numeric($val)) {
+        return (int)$val . ' Users';
+    }
+    return (string)$val;
+}
+
+function get_lead_followup_types(): array
+{
+    $rows = db_rows("SELECT id, name FROM lead_followup_type WHERE status = 1 ORDER BY id ASC");
+    $list = [];
+    if (!empty($rows)) {
+        foreach ($rows as $r) {
+            $list[(int)$r['id']] = $r['name'];
+        }
+    }
+    return $list;
+}
+
+function get_lead_followup_type_label($val): string
+{
+    if (empty($val)) return '-';
+    if (is_numeric($val)) {
+        $row = db_row("SELECT name FROM lead_followup_type WHERE id = " . (int)$val . " LIMIT 1");
+        if (!empty($row['name'])) {
+            return $row['name'];
+        }
+    }
+    return (string)$val;
+}
+
+/**
+ * Sync or create customer from company_lead
+ *
+ * @param int $leadId
+ * @param int $userId
+ * @return int|false Customer ID or false on failure
+ */
+function syncLeadToCustomer(int $leadId, int $userId = 0)
+{
+    if ($leadId <= 0) {
+        return false;
+    }
+
+    $lead = db_row("SELECT * FROM `company_lead` WHERE `id` = $leadId LIMIT 1");
+    if (!$lead) {
+        return false;
+    }
+
+    $leadCompanyId = (int)($lead['company_id'] ?? 0);
+    $custName = trim($lead['customer_name'] ?? '');
+    if ($custName === '') {
+        $custName = trim($lead['contact_person'] ?? '');
+    }
+    if ($custName === '') {
+        $custName = 'Lead #' . $leadId;
+    }
+
+    $mobileNo       = trim($lead['mobile_no'] ?? '');
+    $whatsappNo     = trim($lead['whatsapp_no'] ?? '');
+    $contactPerson  = trim($lead['contact_person'] ?? '');
+    $email          = trim($lead['email'] ?? '');
+    $address        = trim($lead['address'] ?? '');
+    $area           = trim($lead['area'] ?? '');
+    $pincode        = trim($lead['pincode'] ?? '');
+    $countryId      = (int)($lead['country_id'] ?? 0);
+    $stateId        = (int)($lead['state_id'] ?? 0);
+    $cityId         = (int)($lead['city_id'] ?? 0);
+
+    // Find customer type: first try to find one for this company or fallback to default
+    $custTypeCond = "status = 1";
+    if ($leadCompanyId > 0) {
+        $custTypeCond .= " AND (company_id = $leadCompanyId OR company_id = 0)";
+    }
+    $custTypeRow = db_row("SELECT id FROM `customer_type` WHERE $custTypeCond ORDER BY (company_id = $leadCompanyId) DESC, id ASC LIMIT 1");
+    $customerTypeId = $custTypeRow ? (int)$custTypeRow['id'] : 0;
+    if ($customerTypeId <= 0) {
+        $anyType = db_row("SELECT id FROM `customer_type` WHERE status = 1 ORDER BY id ASC LIMIT 1");
+        $customerTypeId = $anyType ? (int)$anyType['id'] : 1;
+    }
+
+    // Check if customer already exists for this lead
+    $existingCust = db_row("SELECT id FROM `customer` WHERE `company_lead_id` = $leadId LIMIT 1");
+    if (!$existingCust && !empty($mobileNo)) {
+        // Also check by mobile number within same company
+        $mobCond = "`mobile_no` = '" . db_escape($mobileNo) . "'";
+        if ($leadCompanyId > 0) {
+            $mobCond .= " AND `company_id` = $leadCompanyId";
+        }
+        $existingCust = db_row("SELECT id FROM `customer` WHERE $mobCond LIMIT 1");
+    }
+
+    $nameEsc       = db_escape($custName);
+    $cpEsc         = ($contactPerson !== '') ? "'" . db_escape($contactPerson) . "'" : "NULL";
+    $mobileEsc     = db_escape($mobileNo);
+    $waSql         = ($whatsappNo !== '') ? "'" . db_escape($whatsappNo) . "'" : "NULL";
+    $emailSql      = (!empty($email) && filter_var($email, FILTER_VALIDATE_EMAIL)) ? "'" . db_escape($email) . "'" : "NULL";
+    $addrSql       = (!empty($address)) ? "'" . db_escape($address) . "'" : "NULL";
+    $areaSql       = (!empty($area)) ? "'" . db_escape($area) . "'" : "NULL";
+    $pinSql        = (!empty($pincode)) ? "'" . db_escape($pincode) . "'" : "NULL";
+    $countrySql    = ($countryId > 0) ? (int)$countryId : "NULL";
+    $stateSql      = ($stateId > 0) ? (int)$stateId : "NULL";
+    $citySql       = ($cityId > 0) ? (int)$cityId : "NULL";
+
+    $assignUserId = $userId > 0 ? $userId : (int)($lead['assigned_to'] ?? 0);
+    $assignSql = ($assignUserId > 0) ? (int)$assignUserId : "NULL";
+
+    if ($existingCust) {
+        // Update existing customer record with company_lead_id and assigned_to if missing
+        $existId = (int)$existingCust['id'];
+        db_query("UPDATE `customer` SET 
+            `company_lead_id` = $leadId,
+            `assigned_to` = COALESCE(NULLIF(`assigned_to`, 0), $assignSql),
+            `updated_by` = $userId,
+            `updated_at` = NOW()
+            WHERE `id` = $existId AND (`company_lead_id` IS NULL OR `company_lead_id` = 0)");
+        return $existId;
+    } else {
+        // Generate auto client code for new customer
+        $maxCustId = (int)(db_row("SELECT MAX(id) as mid FROM `customer`")['mid'] ?? 0) + 1;
+        $clientCode = 'CC-' . str_pad($maxCustId, 3, '0', STR_PAD_LEFT);
+
+        // Insert new customer record
+        $insSql = "INSERT INTO `customer` (
+            `company_id`, `company_lead_id`, `assigned_to`, `client_code`, `customer_type_id`, `name`, `contact_person`,
+            `email`, `mobile_no`, `whatsapp_no`,
+            `address`, `area`, `pincode`, `country_id`, `state_id`, `city_id`, `status`,
+            `created_by`, `created_at`, `updated_at`
+        ) VALUES (
+            $leadCompanyId, $leadId, $assignSql, '$clientCode', $customerTypeId, '$nameEsc', $cpEsc,
+            $emailSql, '$mobileEsc', $waSql,
+            $addrSql, $areaSql, $pinSql, $countrySql, $stateSql, $citySql, 1,
+            $userId, NOW(), NOW()
+        )";
+        $ins = db_query($insSql);
+        return $ins ? db_insert_id() : false;
+    }
 }
 

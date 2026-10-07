@@ -1,17 +1,33 @@
 $(document).ready(function () {
   $('.data-table').each(function () {
     let table = $(this);
+    let filterFormSelector = table.data('filter-form');
     table.DataTable({
       processing: true,
       serverSide: true,
       ajax: {
         url: table.data('ajaxurl'),
-        type: 'POST'
+        type: 'POST',
+        data: function (d) {
+          if (filterFormSelector && $(filterFormSelector).length) {
+            let formArray = $(filterFormSelector).serializeArray();
+            $.each(formArray, function (i, field) {
+              d[field.name] = field.value;
+            });
+          }
+          if (typeof window.dataTableExtraData === 'function') {
+            let extra = window.dataTableExtraData(table);
+            if (extra && typeof extra === 'object') {
+              $.extend(d, extra);
+            }
+          }
+        }
       },
       pageLength: 10,
       lengthMenu: [[10, 25, 50, 100], [10, 25, 50, 100]],
       searching: true,
       ordering: true,
+      autoWidth: false,
       columnDefs: [{
         targets: [0, -1],
         orderable: false

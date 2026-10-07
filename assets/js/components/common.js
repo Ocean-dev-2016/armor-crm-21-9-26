@@ -380,4 +380,4 @@ $(document).ready(function () {
             window.initDataTableDragSort($tbl, tblName);
         }
     });
-});
+});

@@ -277,7 +277,7 @@ $bgLightColorEsc = db_escape($bg_light_color);
 
 $ip = getClientIp();
 if ($id > 0) {
-    $existing = db_row("SELECT header_image, footer_image, favicon, app_logo, login_logo FROM $tbl WHERE id = " . (int)$id . " LIMIT 1");
+    $existing = db_row("SELECT plan_id, header_image, footer_image, favicon, app_logo, login_logo FROM $tbl WHERE id = " . (int)$id . " LIMIT 1");
 
     $headerImageSql = "";
     if ($headerImageName !== null) {
@@ -455,7 +455,7 @@ if (isset($userData) && !empty($userData)) {
 
 // Add all permissions for the company's plan panel_right modules
 if ($plan_id > 0 && !empty($company_id) && !empty($role_id)) {
-    $planRow = db_row("SELECT panel_right FROM plan WHERE id = " . (int)$plan_id . " LIMIT 1");
+    $planRow = db_row("SELECT * FROM plan WHERE id = " . (int)$plan_id . " LIMIT 1");
     if (!empty($planRow['panel_right'])) {
         $moduleIds = array_filter(array_map('trim', explode(',', $planRow['panel_right'])));
         foreach ($moduleIds as $mId) {
@@ -472,6 +472,71 @@ if ($plan_id > 0 && !empty($company_id) && !empty($role_id)) {
                             VALUES ($company_id, $role_id, $mId, 1, 1, 1, 1, 1, 1, $userId, NOW(), NOW())";
             }
             db_query($permSql);
+        }
+    }
+}
+
+// ----------------------------------------------------
+// STORE IN company_subscription_plan TABLE
+// ----------------------------------------------------
+if ($plan_id > 0 && !empty($company_id)) {
+    $shouldInsertSub = false;
+    if ($id <= 0) {
+        // New Company created
+        $shouldInsertSub = true;
+    } else {
+        // Existing Company updated - check if plan has changed or no active subscription exists
+        $prevPlanId = (int)($existing['plan_id'] ?? 0);
+        $hasActiveSub = db_row("SELECT id FROM company_subscription_plan WHERE company_id = " . (int)$company_id . " AND subscription_status = 'active' LIMIT 1");
+        if ($prevPlanId !== (int)$plan_id || empty($hasActiveSub)) {
+            $shouldInsertSub = true;
+            // Mark any previous active subscriptions as expired/superseded
+            db_query("UPDATE company_subscription_plan SET subscription_status = 'expired', updated_by = " . (int)$userId . ", updated_at = NOW() WHERE company_id = " . (int)$company_id . " AND subscription_status = 'active'");
+        }
+    }
+
+    if ($shouldInsertSub) {
+        $subPlanRow = isset($planRow) ? $planRow : db_row("SELECT * FROM plan WHERE id = " . (int)$plan_id . " LIMIT 1");
+        if (!empty($subPlanRow)) {
+            $planDays = (int)($subPlanRow['days'] ?? 0);
+            if ($planDays <= 0) {
+                $planDays = 30; // fallback default
+            }
+
+            $startDate = date('Y-m-d');
+            $endDate = date('Y-m-d', strtotime("+$planDays days"));
+            $expiryDate = $endDate;
+
+            $extraDetailArray = [
+                'id' => (int)$subPlanRow['id'],
+                'name' => $subPlanRow['name'] ?? '',
+                'price' => (float)($subPlanRow['price'] ?? 0),
+                'days' => $planDays,
+                'plan_valid_day' => $planDays,
+                'max_team_user' => (int)($subPlanRow['max_team_user'] ?? 0),
+                'max_customer' => (int)($subPlanRow['max_customer'] ?? 0),
+                'max_inquiry' => (int)($subPlanRow['max_inquiry'] ?? 0),
+            ];
+            $extraDetailJson = db_escape(json_encode($extraDetailArray, JSON_UNESCAPED_UNICODE));
+
+            $insertSubSql = "INSERT INTO company_subscription_plan (
+                                company_id, plan_id, plan_from, plan_to, extra_detail, 
+                                plan_expiry_date, subscription_status, platform, 
+                                created_by, created_at, updated_at
+                            ) VALUES (
+                                " . (int)$company_id . ",
+                                " . (int)$plan_id . ",
+                                '" . $startDate . "',
+                                '" . $endDate . "',
+                                '" . $extraDetailJson . "',
+                                '" . $expiryDate . "',
+                                'active',
+                                NULL,
+                                " . (int)$userId . ",
+                                NOW(),
+                                NOW()
+                            )";
+            db_query($insertSubSql);
         }
     }
 }

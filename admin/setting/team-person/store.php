@@ -34,7 +34,7 @@ if (isset($_GET['action']) && $_GET['action'] === 'get_company_data') {
                         LEFT JOIN plan p ON p.id = c.plan_id 
                         WHERE c.id = $company_id LIMIT 1");
     $maxTeamUser = isset($planInfo['max_team_user']) ? (int) $planInfo['max_team_user'] : 0;
-    $countRow = db_row("SELECT COUNT(*) AS total FROM users WHERE company_id = $company_id AND user_type = 'company_admin'");
+    $countRow = db_row("SELECT COUNT(*) AS total FROM users WHERE company_id = $company_id AND user_type = 'user'");
     $currentCount = (int) ($countRow['total'] ?? 0);
 
     $response['status'] = true;
@@ -175,7 +175,7 @@ $planName        = $companyRow['plan_name'] ?? 'Company Plan';
 // Check max_team_user limit for new team persons (or when transferring between companies)
 if ($id === 0) {
     if ($maxTeamUser > 0) {
-        $countRow = db_row("SELECT COUNT(*) AS total FROM $tbl WHERE company_id = $company_id AND user_type = 'company_admin'");
+        $countRow = db_row("SELECT COUNT(*) AS total FROM $tbl WHERE company_id = $company_id AND user_type = 'user'");
         $currentCount = (int) ($countRow['total'] ?? 0);
         if ($currentCount >= $maxTeamUser) {
             $response['message'] = "Cannot create Team Person. The selected company plan ($planName) allows a maximum of $maxTeamUser team person(s), and all $maxTeamUser slot(s) are already filled.";
@@ -188,7 +188,7 @@ if ($id === 0) {
     $existingUser = db_row("SELECT company_id FROM $tbl WHERE id = $id LIMIT 1");
     if ($existingUser && (int)$existingUser['company_id'] !== $company_id) {
         if ($maxTeamUser > 0) {
-            $countRow = db_row("SELECT COUNT(*) AS total FROM $tbl WHERE company_id = $company_id AND user_type = 'company_admin'");
+            $countRow = db_row("SELECT COUNT(*) AS total FROM $tbl WHERE company_id = $company_id AND user_type = 'user'");
             $currentCount = (int) ($countRow['total'] ?? 0);
             if ($currentCount >= $maxTeamUser) {
                 $response['message'] = "Cannot transfer Team Person. The selected company plan ($planName) allows a maximum of $maxTeamUser team person(s), and all $maxTeamUser slot(s) are already filled.";
@@ -231,7 +231,7 @@ if ($id > 0) {
 } else {
     $hashed = password_hash($password, PASSWORD_BCRYPT);
     $sql = "INSERT INTO $tbl(role_id, company_id, company_plan_id, parent_user, name, username, email, password, mobile_no, country_id, state_id, city_id, address, user_type, ip_address, status, created_by, created_at, updated_at) 
-            VALUES ($role_id, $company_id, $company_plan_id, $parent_user, '$name_esc', '$username_esc', '$email_esc', '$hashed', '$mobile_esc', $country_id, $state_id, $city_id, '$address_esc', 'company_admin', '$ip', 1, '$userId', NOW(), NOW())";
+            VALUES ($role_id, $company_id, $company_plan_id, $parent_user, '$name_esc', '$username_esc', '$email_esc', '$hashed', '$mobile_esc', $country_id, $state_id, $city_id, '$address_esc', 'user', '$ip', 1, '$userId', NOW(), NOW())";
 
     $res = db_query($sql);
     $msg = $pageNm . ' created successfully.';

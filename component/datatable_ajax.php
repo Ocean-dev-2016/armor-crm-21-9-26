@@ -185,10 +185,10 @@ function dt_action_dropdown($id, $tbl, array $options = [])
     if (!empty($actionItems)) {
         return '
         <div class="dropdown">
-            <button class="btn btn-icon btn-sm btn-light" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+            <button class="btn btn-icon btn-sm btn-light" type="button" data-bs-toggle="dropdown" data-bs-display="static" aria-expanded="false">
                 <i data-lucide="more-horizontal" class="fs-16"></i>
             </button>
-            <ul class="dropdown-menu dropdown-menu-end">
+            <ul class="dropdown-menu dropdown-menu-end shadow-sm">
                 ' . $actionItems . '
             </ul>
         </div>';

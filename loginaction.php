@@ -90,46 +90,13 @@ if ($user['user_type'] !== 'superadmin') {
 // ('superadmin', 'superadmin', 'superadmin@gmail.com', '$password', 'superadmin', '1')";
 // db_query($sql);
 
-$redirect = SITE_URL;
-// switch ($user['user_type']) {
-
-//     case 'superadmin':
-
-//         $redirect = SITE_URL . 'admin/dashboard';
-
-//         break;
-
-
-//     case 'company_admin':
-
-//         $redirect = SITE_URL . 'company/dashboard';
-
-//         break;
-
-
-//     case 'employee':
-
-//         $redirect = SITE_URL . 'employee/dashboard';
-
-//         break;
-
-
-//     case 'customer':
-
-//         $redirect = SITE_URL . 'customer/dashboard';
-
-//         break;
-
-
-//     default:
-
-//         echo json_encode([
-//             'status' => false,
-//             'message' => 'Invalid user type.'
-//         ]);
-
-//         exit;
-// }
+if ($user['user_type'] === 'superadmin') {
+    $redirect = SITE_URL;
+} elseif ($user['user_type'] === 'user') {
+    $redirect = SITE_URL . 'user-dashboard';
+} else {
+    $redirect = SITE_URL . 'dashboard';
+}
 
 echo json_encode([
     'status' => true,

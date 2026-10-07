@@ -20,7 +20,7 @@ $module = $module ?? $tbl;
                 <ol class="breadcrumb mb-0">
                     <!-- Home -->
                     <li class="breadcrumb-item">
-                        <a href="<?= SITE_URL ?>">
+                        <a href="<?= !empty($homeUrl) ? $homeUrl : SITE_URL ?>">
                             Home
                         </a>
                     </li>

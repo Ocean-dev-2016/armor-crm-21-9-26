@@ -23,7 +23,7 @@
   </div>
 </div>
 <footer class="footer">
-  <p class="mb-0">&copy; <span id="year"></span> Ocean Infotech. All Rights Reserved. | Developed by Ocean Infotech</p>
+  <p class="mb-0">&copy; <span id="year"></span> Ocean Infotech. All Rights Reserved. | Developed by <a href="https://www.oceaninfotech.co.in" target="_blank">Ocean Infotech</a></p>
   <script>
     document.getElementById('year').textContent = new Date().getFullYear();
     document.addEventListener('DOMContentLoaded', function() {

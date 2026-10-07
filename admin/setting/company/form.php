@@ -723,6 +723,7 @@ include BASE_PATH . '/component/breadcrumb.php';
         </div>
     </div>
 </div>
+
 <?php
 include BASE_PATH . '/include/footer.php';
 ?>

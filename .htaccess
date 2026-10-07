@@ -12,6 +12,10 @@ RewriteRule ^login/?$ login.php [L,QSA]
 # Logout
 RewriteRule ^logout/?$ logout.php [L,QSA]
 
+# Dashboard (Company Admin & Users)
+RewriteRule ^dashboard/?$ dashboard.php [L,QSA]
+RewriteRule ^user-dashboard/?$ user_dashboard.php [L,QSA]
+
 # Master Route
 RewriteRule ^category/?$ admin/master/category/list.php [L]
 RewriteRule ^sub-category/?$ admin/master/sub-category/list.php [L]
@@ -27,6 +31,8 @@ RewriteRule ^followup-reason/?$ admin/master/followup-reason/list.php [L]
 RewriteRule ^industry-type/?$ admin/master/industry-type/list.php [L]
 RewriteRule ^company-type/?$ admin/master/company-type/list.php [L]
 RewriteRule ^brand/?$ admin/master/brand/list.php [L]
+RewriteRule ^customer-type/?$ admin/master/customer-type/list.php [L]
+RewriteRule ^customer-followup-reason/?$ admin/master/customer-followup-reason/list.php [L]
 
 # Sub Master
 RewriteRule ^country/?$ admin/submaster/country/list.php [L]
@@ -43,9 +49,36 @@ RewriteRule ^dispatch-order-status/?$ admin/submaster/dispatch-order-status/list
 RewriteRule ^visit-purpose/?$ admin/submaster/visit-purpose/list.php [L]
 RewriteRule ^terms-condition/?$ admin/submaster/terms-condition/list.php [L]
 RewriteRule ^zone/?$ admin/submaster/zone/list.php [L]
+RewriteRule ^marketing-status/?$ admin/submaster/marketing-status/list.php [L,QSA]
+
 
 # Module
 RewriteRule ^module/?$ admin/setting/module/list.php [L]
+
+# Platform Leads (Superadmin Only)
+RewriteRule ^lead/?$ admin/setting/lead/list.php [L,QSA]
+RewriteRule ^lead/add/?$ admin/setting/lead/form.php [L,QSA]
+RewriteRule ^lead/edit/([^/]+)/?$ admin/setting/lead/form.php?id=$1 [L,QSA]
+RewriteRule ^lead/followup-history/([^/]+)/?$ admin/setting/lead/followup-history.php?id=$1 [L,QSA]
+RewriteRule ^lead/followup-history/?$ admin/setting/lead/followup-history.php [L,QSA]
+RewriteRule ^leads/?$ admin/setting/lead/list.php [L,QSA]
+RewriteRule ^leads/add/?$ admin/setting/lead/form.php [L,QSA]
+RewriteRule ^leads/edit/([^/]+)/?$ admin/setting/lead/form.php?id=$1 [L,QSA]
+RewriteRule ^saas-leads/?$ admin/setting/lead/list.php [L,QSA]
+RewriteRule ^saas-leads/add/?$ admin/setting/lead/form.php [L,QSA]
+RewriteRule ^saas-leads/edit/([^/]+)/?$ admin/setting/lead/form.php?id=$1 [L,QSA]
+
+# Lead Status
+RewriteRule ^lead-status/?$ admin/setting/lead-status/list.php [L]
+
+# Lead Source of Inquiry
+RewriteRule ^lead-source-of-inquiry/?$ admin/setting/lead-source-of-inquiry/list.php [L]
+
+# Lead Employee
+RewriteRule ^lead-employee/?$ admin/setting/lead-employee/list.php [L]
+
+# Lead Followup Type
+RewriteRule ^lead-followup-type/?$ admin/setting/lead-followup-type/list.php [L]
 
 # Plan
 RewriteRule ^plan/?$ admin/setting/plan/list.php [L]
@@ -53,9 +86,9 @@ RewriteRule ^plan/add/?$ admin/setting/plan/form.php [L]
 RewriteRule ^plan/edit/([^/]+)/?$ admin/setting/plan/form.php?id=$1 [L]
 
 # Company
-RewriteRule ^company/?$ admin/setting/company/list.php [L]
-RewriteRule ^company/add/?$ admin/setting/company/form.php [L]
-RewriteRule ^company/edit/([^/]+)/?$ admin/setting/company/form.php?id=$1 [L]
+RewriteRule ^company/?$ admin/setting/company/list.php [L,QSA]
+RewriteRule ^company/add/?$ admin/setting/company/form.php [L,QSA]
+RewriteRule ^company/edit/([^/]+)/?$ admin/setting/company/form.php?id=$1 [L,QSA]
 
 # Team Role
 RewriteRule ^teamrole/?$ admin/setting/teamrole/list.php [L]
@@ -65,6 +98,19 @@ RewriteRule ^teamrole/setting/([^/]+)/?$ admin/setting/teamrole/setting.php?id=$
 RewriteRule ^team-person/?$ admin/setting/team-person/list.php [L]
 RewriteRule ^team-person/add/?$ admin/setting/team-person/form.php [L]
 RewriteRule ^team-person/edit/([^/]+)/?$ admin/setting/team-person/form.php?id=$1 [L]
+
+# Company Lead
+RewriteRule ^company-lead/?$ admin/setting/company-lead/list.php [L,QSA]
+RewriteRule ^company-lead/add/?$ admin/setting/company-lead/form.php [L,QSA]
+RewriteRule ^company-lead/view/([^/]+)/?$ admin/setting/company-lead/view.php?id=$1 [L,QSA]
+RewriteRule ^company-lead/edit/([^/]+)/?$ admin/setting/company-lead/form.php?id=$1 [L,QSA]
+RewriteRule ^company-lead-followup/?$ admin/setting/company-lead/followup-list.php [L,QSA]
+# Customer (Sales & Marketing)
+RewriteRule ^customer/?$ admin/sales/customer/list.php [L,QSA]
+RewriteRule ^customer/add/?$ admin/sales/customer/form.php [L,QSA]
+RewriteRule ^customer/edit/([^/]+)/?$ admin/sales/customer/form.php?id=$1 [L,QSA]
+RewriteRule ^customer/lead-history/([^/]+)/?$ admin/sales/customer/lead-history.php?customer_id=$1 [L,QSA]
+RewriteRule ^customer-followup/?$ admin/sales/customer-followup/list.php [L,QSA]
 
 # Profile
 RewriteRule ^profile/?$ profile.php [L]

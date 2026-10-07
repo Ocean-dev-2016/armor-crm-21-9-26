@@ -155,7 +155,7 @@ if ($action === 'get_role') {
     ]);
 }
 
-if ($action === 'create_company') {
+if ($action === 'create_company' || $action === 'register') {
     if ($method !== 'POST') {
         apiResponse(405, 'Only POST method is allowed.');
     }
@@ -264,17 +264,21 @@ if ($action === 'create_company') {
         $roleId = db_insert_id($conn);
     }
 
-    // 2. Create Company Admin User in users table
+    // 2. Generate Bearer / API token for the new user (like login API)
+    $token = bin2hex(random_bytes(32));
+    $tokenEscaped = db_escape($token);
+    $expiresAt = date('Y-m-d H:i:s', strtotime('+30 days'));
+
+    // Create Company Admin User in users table with app_key
     $sqlUser = "INSERT INTO users (
         role_id, company_id, company_plan_id, name, username, email, password, 
-        mobile_no, country_id, state_id, city_id, user_type, ip_address, created_by, created_at, updated_at
+        mobile_no, country_id, state_id, city_id, user_type, app_key, app_key_expires_at, ip_address, created_by, created_at, updated_at
     ) VALUES (
         '$roleId', '$newCompanyId', '$plan_id', '$personNameEsc', '$nameEsc', '$emailEsc', '$hashedPassword',
-        '$mobileNoEsc', '$country_id', '$state_id', '$city_id', 'company_admin', '$ip', '$userId', NOW(), NOW()
+        '$mobileNoEsc', '$country_id', '$state_id', '$city_id', 'company_admin', '$tokenEscaped', '$expiresAt', '$ip', '$userId', NOW(), NOW()
     )";
     db_query($sqlUser);
     $newUserId = db_insert_id($conn);
-
     // 3. Assign Plan Permissions to Role
     if ($plan_id > 0 && !empty($newCompanyId) && !empty($roleId)) {
         $planRow = db_row("SELECT panel_right FROM plan WHERE id = " . (int)$plan_id . " LIMIT 1");
@@ -298,12 +302,17 @@ if ($action === 'create_company') {
         }
     }
 
-    apiResponse(200, 'Company created successfully.', [
+    $newUser = db_row("SELECT id, name, username, email, user_type, company_id, role_id, company_plan_id, status FROM users WHERE id = $newUserId LIMIT 1");
+
+    apiResponse(200, 'Registration successful.', [
+        'token'      => $token,
+        'expires_at' => $expiresAt,
         'company_id' => $newCompanyId,
         'user_id'    => $newUserId,
         'role_id'    => $roleId,
         'name'       => $name,
-        'email'      => $email
+        'email'      => $email,
+        'user'       => $newUser
     ]);
 }
 

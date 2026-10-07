@@ -9,7 +9,7 @@ $tbl = 'users';
 $canEdit   = hasPermission('team-person', 'updates');
 $canDelete = hasPermission('team-person', 'deletes');
 
-$baseConditions = ["u.user_type = 'company_admin'"];
+$baseConditions = ["u.user_type != 'superadmin'"];
 if (isset($_SESSION['company_id']) && (int)$_SESSION['company_id'] > 0) {
     $baseConditions[] = "u.company_id = " . (int)$_SESSION['company_id'];
 }

@@ -56,7 +56,14 @@ handle_datatable([
                 'can_edit'     => $canEdit,
                 'can_delete'   => $canDelete,
                 'is_encrypted' => true,
-                'edit_url'     => SITE_URL . 'company/edit/' . $encId
+                'edit_url'     => SITE_URL . 'company/edit/' . $encId,
+                'extra_items'  => '<li>
+                    <a class="dropdown-item text-info btn-view-subscription-history" href="javascript:void(0);" 
+                       data-id="' . (int)$row['id'] . '" 
+                       data-name="' . htmlspecialchars($row['name'] ?? '', ENT_QUOTES) . '">
+                       <i data-lucide="history" class="fs-14"></i> Subscription History
+                    </a>
+                </li>'
             ])
         ];
     }

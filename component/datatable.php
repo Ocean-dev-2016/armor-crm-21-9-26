@@ -19,7 +19,7 @@ $cardHeaderRight = $cardHeaderRight ?? '';
             </div>
             <div class="card-body">
                 <div class="table-responsive">
-                    <table class="table table-hover table-bordered align-middle table-striped mb-0 data-table" data-ajaxurl="<?= htmlspecialchars($ajaxUrl) ?>" data-tbl="<?= htmlspecialchars($tbl ?? '') ?>">
+                    <table class="table table-hover table-bordered align-middle table-striped mb-0 data-table" data-ajaxurl="<?= htmlspecialchars($ajaxUrl) ?>" data-tbl="<?= htmlspecialchars($tbl ?? '') ?>"<?= !empty($filterFormId) ? ' data-filter-form="' . htmlspecialchars($filterFormId) . '"' : '' ?>>
                         <thead>
                             <tr>
                                 <?php foreach ($tableHeaders as $header): ?>

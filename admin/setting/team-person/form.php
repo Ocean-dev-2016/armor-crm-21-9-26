@@ -25,7 +25,7 @@ $user = [
 ];
 
 if ($isEdit) {
-    $userData = db_row("SELECT * FROM $tbl WHERE id = $id AND user_type = 'company_admin' LIMIT 1");
+    $userData = db_row("SELECT * FROM $tbl WHERE id = $id AND user_type != 'superadmin' LIMIT 1");
     if (!$userData) {
         die($pageNm . ' not found.');
     }

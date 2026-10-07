@@ -58,6 +58,97 @@ function showToast(message, type = 'success') {
 }
 
 /**
+ * Live Refresh Follow-up Notifications in Header without page reload
+ */
+function refreshFollowupNotifications(callback) {
+    const siteUrl = (typeof SITE_URL !== 'undefined') ? SITE_URL : '/';
+    const ajaxUrl = siteUrl + 'include/notifications-ajax.php';
+
+    if (typeof jQuery !== 'undefined') {
+        jQuery.ajax({
+            url: ajaxUrl,
+            type: 'GET',
+            dataType: 'json',
+            success: function (res) {
+                if (res && res.status) {
+                    const badge = document.getElementById('headerNotifBadge');
+                    const pendingBadge = document.getElementById('headerNotifPendingBadge');
+                    const listContainer = document.getElementById('headerNotifList');
+
+                    if (badge) {
+                        if (res.total_pending > 0) {
+                            badge.textContent = res.badge_text || res.total_pending;
+                            badge.classList.remove('d-none');
+                        } else {
+                            badge.textContent = '0';
+                            badge.classList.add('d-none');
+                        }
+                    }
+
+                    if (pendingBadge) {
+                        pendingBadge.textContent = res.pending_label || (res.total_pending + ' Pending');
+                    }
+
+                    if (listContainer && res.html !== undefined) {
+                        listContainer.innerHTML = res.html;
+                        if (typeof lucide !== 'undefined') {
+                            lucide.createIcons();
+                        }
+                    }
+                }
+                if (typeof callback === 'function') {
+                    callback(res);
+                }
+            },
+            error: function () {
+                if (typeof callback === 'function') {
+                    callback(null);
+                }
+            }
+        });
+    } else {
+        fetch(ajaxUrl)
+            .then(response => response.json())
+            .then(res => {
+                if (res && res.status) {
+                    const badge = document.getElementById('headerNotifBadge');
+                    const pendingBadge = document.getElementById('headerNotifPendingBadge');
+                    const listContainer = document.getElementById('headerNotifList');
+
+                    if (badge) {
+                        if (res.total_pending > 0) {
+                            badge.textContent = res.badge_text || res.total_pending;
+                            badge.classList.remove('d-none');
+                        } else {
+                            badge.textContent = '0';
+                            badge.classList.add('d-none');
+                        }
+                    }
+
+                    if (pendingBadge) {
+                        pendingBadge.textContent = res.pending_label || (res.total_pending + ' Pending');
+                    }
+
+                    if (listContainer && res.html !== undefined) {
+                        listContainer.innerHTML = res.html;
+                        if (typeof lucide !== 'undefined') {
+                            lucide.createIcons();
+                        }
+                    }
+                }
+                if (typeof callback === 'function') {
+                    callback(res);
+                }
+            })
+            .catch(() => {
+                if (typeof callback === 'function') {
+                    callback(null);
+                }
+            });
+    }
+}
+
+/**
  * Header Menu Search & Real-time Live Clock
  */
 document.addEventListener('DOMContentLoaded', function () {
@@ -245,6 +336,19 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // 3. Dynamic Theme Color Extraction from Active Header Logo
     applyThemeFromLogo();
+
+    // 4. Auto-refresh notifications when bell dropdown is clicked
+    const notifDropdownEl = document.getElementById('headerNotificationDropdown');
+    if (notifDropdownEl) {
+        notifDropdownEl.addEventListener('show.bs.dropdown', function () {
+            refreshFollowupNotifications();
+        });
+    }
+
+    // 5. Periodic background refresh (every 30 seconds)
+    setInterval(function () {
+        refreshFollowupNotifications();
+    }, 30000);
 });
 
 /**

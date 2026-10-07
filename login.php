@@ -65,7 +65,7 @@ if (!empty($loginBranding['login_logo']) && file_exists(BASE_PATH . '/uploads/sy
           </div>
         </div>
         <div class="text-center mt-4">
-          <p class="mb-0">&copy; <span><?php echo date('Y') ?></span> Developed by <a href="https://www.oceaninfotech.co.in/" target="_blank">Ocean Infotech</a></p>
+          <p class="mb-0">&copy; <span><?php echo date('Y') ?></span> Developed by <a href="https://www.oceaninfotech.co.in" target="_blank">Ocean Infotech</a></p>
         </div>
       </div>
     </div>

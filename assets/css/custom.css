@@ -1,36 +1,74 @@
-/* Table width */
+/* Table width & Full-width responsiveness across all tables */
 .data-table {
     width: 100% !important;
-    table-layout: fixed;
 }
 
-/* First column - Sr No. */
+/* First column - Sr No. (Fixed compact width) */
 .data-table th:first-child,
 .data-table td:first-child {
-    width: 70px !important;
+    width: 60px !important;
+    min-width: 60px !important;
     text-align: center;
     white-space: nowrap;
 }
 
-/* Last column - Action */
+/* Last column - Action (Fixed compact width) */
 .data-table th:last-child,
 .data-table td:last-child {
-    width: 80px !important;
+    width: 75px !important;
+    min-width: 75px !important;
     text-align: center;
     white-space: nowrap;
 }
 
-/* All middle columns */
+/* Middle Columns: Clean alignment and auto-fit without collapsing */
 .data-table th:not(:first-child):not(:last-child),
 .data-table td:not(:first-child):not(:last-child) {
-    width: 150px !important;
+    vertical-align: middle;
+    min-width: 100px;
 }
 
-/* Text wrapping */
+/* Dynamic Content Wrapping */
+.data-table th,
 .data-table td {
-    white-space: normal !important;
-    word-wrap: break-word;
-    overflow-wrap: break-word;
+    padding: 10px 10px !important;
+    vertical-align: middle;
+}
+
+.data-table td {
+    white-space: normal;
+    word-break: break-word;
+}
+
+.data-table td.email-col {
+    word-break: break-all;
+}
+
+.data-table td {
+    white-space: normal;
+    word-break: break-word;
+}
+
+/* Responsive Table Container: Only scroll on small mobile screens */
+.table-responsive {
+    overflow-x: auto;
+    overflow-y: visible !important;
+    -webkit-overflow-scrolling: touch;
+}
+
+@media (min-width: 992px) {
+    .table-responsive {
+        overflow-x: visible !important;
+    }
+}
+
+.data-table .dropdown-menu {
+    z-index: 1060 !important;
+}
+
+div.dataTables_wrapper,
+div.dt-container {
+    overflow: visible !important;
 }
 
 .toast-body {
@@ -911,4 +949,440 @@
     .header-search-input-group .form-control::placeholder {
         font-size: 11.5px;
     }
+}
+
+/* ============================================================
+   SUPERADMIN MODERN DASHBOARD STYLES (THEME-INTEGRATED)
+   ============================================================ */
+.super-hero-banner {
+    background: linear-gradient(135deg, var(--bs-primary) 0%, rgba(var(--bs-primary-rgb), 0.82) 55%, #111c2e 100%);
+    border-radius: 18px;
+    position: relative;
+    overflow: hidden;
+    box-shadow: 0 10px 30px -10px rgba(var(--bs-primary-rgb), 0.45);
+}
+
+.super-hero-banner::after {
+    content: '';
+    position: absolute;
+    top: -40%;
+    right: -10%;
+    width: 380px;
+    height: 380px;
+    background: radial-gradient(circle, rgba(255, 255, 255, 0.18) 0%, rgba(255, 255, 255, 0) 70%);
+    border-radius: 50%;
+    pointer-events: none;
+}
+
+.super-hero-banner::before {
+    content: '';
+    position: absolute;
+    bottom: -30%;
+    left: 20%;
+    width: 250px;
+    height: 250px;
+    background: radial-gradient(circle, rgba(var(--bs-info-rgb, 13, 202, 240), 0.22) 0%, rgba(255, 255, 255, 0) 70%);
+    border-radius: 50%;
+    pointer-events: none;
+}
+
+.stat-card-modern {
+    border-radius: 16px;
+    border: 1px solid var(--bs-border-color, rgba(0, 0, 0, 0.08));
+    background: var(--bs-card-bg, #ffffff);
+    transition: all 0.25s ease-in-out;
+    position: relative;
+    overflow: hidden;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.03);
+}
+
+.stat-card-modern:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 12px 24px -8px rgba(0, 0, 0, 0.12);
+}
+
+.stat-card-modern::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 4px;
+    background: var(--card-accent, var(--bs-primary));
+    opacity: 0.9;
+    border-radius: 16px 0 0 16px;
+}
+
+.stat-card-modern.card-primary {
+    --card-accent: var(--bs-primary);
+}
+
+.stat-card-modern.card-success {
+    --card-accent: var(--bs-success);
+}
+
+.stat-card-modern.card-warning {
+    --card-accent: var(--bs-warning);
+}
+
+.stat-card-modern.card-info {
+    --card-accent: var(--bs-info);
+}
+
+.stat-card-modern.card-purple {
+    --card-accent: #6f42c1;
+}
+
+.stat-icon-wrapper {
+    width: 46px;
+    height: 46px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.25s ease;
+}
+
+.icon-bg-primary {
+    background: rgba(var(--bs-primary-rgb), 0.12);
+    color: var(--bs-primary);
+}
+
+.icon-bg-success {
+    background: rgba(var(--bs-success-rgb, 25, 135, 84), 0.12);
+    color: var(--bs-success);
+}
+
+.icon-bg-warning {
+    background: rgba(var(--bs-warning-rgb, 255, 193, 7), 0.15);
+    color: #d39e00;
+}
+
+.icon-bg-info {
+    background: rgba(var(--bs-info-rgb, 13, 202, 240), 0.14);
+    color: var(--bs-info);
+}
+
+.icon-bg-purple {
+    background: rgba(111, 66, 193, 0.12);
+    color: #6f42c1;
+}
+
+.stat-card-modern:hover .stat-icon-wrapper {
+    transform: scale(1.08) rotate(2deg);
+}
+
+.company-avatar-box {
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    background: linear-gradient(135deg, var(--bs-primary), rgba(var(--bs-primary-rgb), 0.7));
+    color: #ffffff;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    box-shadow: 0 3px 8px rgba(var(--bs-primary-rgb), 0.25);
+}
+
+.quick-action-pill {
+    border: 1px solid var(--bs-border-color, #e9ecef);
+    background: var(--bs-card-bg, #ffffff);
+    border-radius: 12px;
+    padding: 10px 14px;
+    text-decoration: none;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    transition: all 0.2s ease;
+    color: var(--bs-body-color, #212529);
+}
+
+.quick-action-pill:hover {
+    background: rgba(var(--bs-primary-rgb), 0.05);
+    border-color: var(--bs-primary);
+    color: var(--bs-primary);
+    transform: translateX(4px);
+}
+
+.badge-theme-subtle {
+    background: rgba(var(--bs-primary-rgb), 0.12);
+    color: var(--bs-primary);
+    border: 1px solid rgba(var(--bs-primary-rgb), 0.25);
+}
+
+.theme-card-header {
+    border-bottom: 1px solid rgba(var(--bs-primary-rgb), 0.08);
+    background: transparent;
+}
+
+/* Superadmin Tables & Themed Headers */
+.superadmin-table th {
+    font-size: 11.5px;
+    letter-spacing: 0.5px;
+    font-weight: 700;
+    text-transform: uppercase;
+    padding: 12px 14px;
+    color: var(--bs-body-color) !important;
+    background-color: var(--bs-tertiary-bg) !important;
+    border-bottom: 1px solid var(--bs-border-color) !important;
+}
+
+[data-bs-theme="dark"] .superadmin-table th {
+    background-color: var(--bs-dark-bg-subtle, rgba(255, 255, 255, 0.06)) !important;
+    color: var(--bs-light, #f8f9fa) !important;
+}
+
+.superadmin-table td {
+    padding: 12px 14px;
+    vertical-align: middle;
+    font-size: 13.5px;
+    color: var(--bs-body-color);
+    border-color: var(--bs-border-color);
+}
+
+/* Subscription History Table & Actions (Theme CSS Variables) */
+#subscriptionHistoryTable {
+    color: var(--bs-body-color);
+}
+
+#subscriptionHistoryTable thead {
+    background-color: var(--bs-tertiary-bg);
+}
+
+#subscriptionHistoryTable th {
+    font-size: 11.5px;
+    letter-spacing: 0.5px;
+    font-weight: 700;
+    padding: 12px 14px;
+    color: var(--bs-body-color) !important;
+    background-color: var(--bs-tertiary-bg) !important;
+    border-bottom: 1px solid var(--bs-border-color) !important;
+}
+
+[data-bs-theme="dark"] #subscriptionHistoryTable th {
+    background-color: var(--bs-dark-bg-subtle, rgba(255, 255, 255, 0.06)) !important;
+    color: var(--bs-light, #f8f9fa) !important;
+}
+
+#subscriptionHistoryTable td {
+    padding: 12px 14px;
+    vertical-align: middle;
+    font-size: 13.5px;
+    color: var(--bs-body-color);
+    border-color: var(--bs-border-color);
+}
+
+.btn-add-days {
+    background-color: var(--bs-primary) !important;
+    border-color: var(--bs-primary) !important;
+    color: var(--bs-white, #ffffff) !important;
+    font-weight: 500;
+    border-radius: 6px;
+    transition: all 0.2s ease;
+}
+
+.btn-add-days:hover,
+.btn-add-days:focus {
+    background-color: var(--bs-primary) !important;
+    border-color: var(--bs-primary) !important;
+    filter: brightness(0.9);
+    color: var(--bs-white, #ffffff) !important;
+}
+
+.btn-upgrade-plan {
+    background-color: var(--bs-success) !important;
+    border-color: var(--bs-success) !important;
+    color: var(--bs-white, #ffffff) !important;
+    font-weight: 500;
+    border-radius: 6px;
+    transition: all 0.2s ease;
+}
+
+.btn-upgrade-plan:hover,
+.btn-upgrade-plan:focus {
+    background-color: var(--bs-success) !important;
+    border-color: var(--bs-success) !important;
+    filter: brightness(0.9);
+    color: var(--bs-white, #ffffff) !important;
+}
+
+/* Modern Pill Badge Select for Lead Status */
+.lead-status-select-wrap {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    width: auto;
+}
+
+.lead-status-badge-select {
+    appearance: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    cursor: pointer;
+    font-size: 12px !important;
+    font-weight: 600 !important;
+    letter-spacing: 0.3px;
+    padding: 4px 26px 4px 12px !important;
+    border-radius: 50rem !important;
+    border: 1px solid transparent !important;
+    outline: none !important;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05) !important;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    background-repeat: no-repeat !important;
+    background-position: right 9px center !important;
+    background-size: 10px 10px !important;
+    line-height: 1.4 !important;
+    white-space: nowrap !important;
+}
+
+.lead-status-badge-select:hover {
+    filter: brightness(0.96);
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1) !important;
+    transform: translateY(-0.5px);
+}
+
+.lead-status-badge-select:focus {
+    box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.2) !important;
+}
+
+.lead-status-badge-select option {
+    background-color: #ffffff !important;
+    color: #1e293b !important;
+    font-weight: 500 !important;
+    font-size: 13px !important;
+    padding: 6px 10px !important;
+}
+
+/* Ensure TomSelect controls match the theme standard inputs perfectly */
+.ts-wrapper.form-select,
+.ts-wrapper.single {
+    width: 100%;
+}
+
+.ts-wrapper.single .ts-control,
+.ts-control {
+    border: 1px solid rgba(0, 0, 0, .1) !important;
+    border-radius: .5rem !important;
+    background-color: var(--bs-body-bg, #ffffff) !important;
+    color: var(--bs-body-color) !important;
+    font-family: inherit !important;
+    font-size: 1rem !important;
+    line-height: 1.5 !important;
+    min-height: calc(1.5em + 1.2rem + 2px) !important;
+    padding: .6rem 2.25rem .6rem 1rem !important;
+    box-shadow: none !important;
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%23343a40' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='m2 5 6 6 6-6'/%3e%3c/svg%3e") !important;
+    background-repeat: no-repeat !important;
+    background-position: right 1rem center !important;
+    background-size: 16px 12px !important;
+    transition: all .2s ease !important;
+}
+
+[data-bs-theme="dark"] .ts-wrapper.single .ts-control,
+[data-bs-theme="dark"] .ts-control {
+    border-color: var(--bs-border-color, rgba(255, 255, 255, .15)) !important;
+    background-color: var(--bs-body-bg) !important;
+}
+
+.ts-wrapper.single .ts-control:after {
+    display: none !important;
+}
+
+.ts-wrapper.single.focus .ts-control,
+.ts-wrapper.focus .ts-control {
+    box-shadow: 0 0 0 .25rem rgba(13, 110, 253, .15) !important;
+    border-color: var(--bs-primary) !important;
+    outline: 0 !important;
+}
+
+.ts-control input {
+    font-family: inherit !important;
+    font-size: 1rem !important;
+    line-height: 1.5 !important;
+    color: var(--bs-body-color) !important;
+}
+
+.ts-control .item {
+    font-family: inherit !important;
+    font-size: 1rem !important;
+    line-height: 1.5 !important;
+    color: var(--bs-body-color) !important;
+}
+
+.ts-control input::placeholder,
+.ts-control .item:empty,
+.ts-control .placeholder {
+    color: var(--bs-secondary-color, #6c757d) !important;
+    font-size: 1rem !important;
+    font-weight: 400 !important;
+    opacity: 1 !important;
+}
+
+.ts-dropdown {
+    border: var(--bs-border-width, 1px) solid var(--bs-border-color, #e2e8f0) !important;
+    border-radius: var(--bs-border-radius, 0.375rem) !important;
+    background-color: var(--bs-body-bg, #ffffff) !important;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1) !important;
+    z-index: 9999 !important;
+    margin-top: 4px !important;
+    font-family: inherit !important;
+    font-size: 1rem !important;
+    padding: 4px 0 !important;
+}
+
+.ts-dropdown .option {
+    padding: 8px 12px !important;
+    font-size: 1rem !important;
+    color: var(--bs-body-color, #212529) !important;
+    cursor: pointer;
+    transition: background-color 0.15s ease;
+}
+
+.ts-dropdown .option:hover,
+.ts-dropdown .option.active {
+    background-color: var(--bs-tertiary-bg, #f1f5f9) !important;
+    color: var(--bs-body-color, #212529) !important;
+}
+
+.ts-dropdown .option.selected {
+    background-color: rgba(var(--bs-primary-rgb, 13, 110, 253), 0.1) !important;
+    color: var(--bs-primary, #0d6efd) !important;
+    font-weight: 500;
+}
+
+/* TomSelect dropdown search input styling */
+.plugin-dropdown_input .dropdown-input {
+    border: 1px solid var(--bs-border-color, #dee2e6) !important;
+    border-radius: .375rem !important;
+    padding: .45rem .75rem !important;
+    margin: .35rem !important;
+    width: calc(100% - .7rem) !important;
+    font-size: .875rem !important;
+    background-color: var(--bs-body-bg, #fff) !important;
+    color: var(--bs-body-color, #212529) !important;
+    outline: none !important;
+    box-shadow: none !important;
+}
+
+.plugin-dropdown_input .dropdown-input:focus {
+    border-color: var(--bs-primary) !important;
+    box-shadow: 0 0 0 .2rem rgba(var(--bs-primary-rgb, 13, 110, 253), .15) !important;
+}
+
+.ts-dropdown .optgroup-header {
+    font-size: .75rem !important;
+    font-weight: 600 !important;
+    text-transform: uppercase;
+    color: var(--bs-secondary-color, #6c757d) !important;
+    padding: .35rem .75rem !important;
+}
+
+.ts-dropdown .option {
+    padding: .5rem .75rem !important;
+    font-size: .875rem !important;
 }
