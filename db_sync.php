@@ -1081,7 +1081,7 @@ if (!is_dir($systemUploadDir)) {
 
 echo '<p class="mt-3 font-semibold text-green-700"><strong>Database synchronization completed successfully.</strong></p>';
 ?>
-    <a href="<?= SITE_URL ?>" class="btn">Go to CRM Home</a>
+    <a href="<?= SITE_URL ?>login" class="btn">Go to CRM Home</a>
 </div>
 </body>
 </html>
