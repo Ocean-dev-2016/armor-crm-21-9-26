@@ -292,6 +292,114 @@ if (!tableExists('lead_followup_type')) {
     }
 }
 
+// 7c. Check & Create `lead_status` table & default entries
+if (!tableExists('lead_status')) {
+    $createLeadStatusSql = "CREATE TABLE IF NOT EXISTS `lead_status` (
+        `id` INT(11) NOT NULL AUTO_INCREMENT PRIMARY KEY,
+        `company_id` INT(11) NOT NULL DEFAULT 0,
+        `name` VARCHAR(255) NOT NULL,
+        `color` VARCHAR(50) NOT NULL DEFAULT '#0e5a6c',
+        `status` TINYINT(1) NOT NULL DEFAULT 1,
+        `created_by` INT(11) NOT NULL DEFAULT 0,
+        `updated_by` INT(11) NOT NULL DEFAULT 0,
+        `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        `updated_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        KEY `company_id` (`company_id`),
+        KEY `status` (`status`)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4";
+    $q = mysqli_query($conn, $createLeadStatusSql);
+    if ($q) {
+        echo '<div class="log-item log-success">✓ Created `lead_status` table successfully.</div>';
+        mysqli_query($conn, "INSERT INTO `lead_status` (`id`, `company_id`, `name`, `color`, `status`) VALUES
+            (1, 0, 'New', '#0d6efd', 1),
+            (2, 0, 'Contacted', '#0dcaf0', 1),
+            (3, 0, 'Demo Scheduled', '#ffc107', 1),
+            (6, 0, 'Converted', '#198754', 1),
+            (7, 0, 'Lost', '#dc3545', 1)
+            ON DUPLICATE KEY UPDATE `name` = VALUES(`name`), `color` = VALUES(`color`)");
+    } else {
+        echo '<div class="log-item log-error">✗ Failed to create `lead_status` table: ' . mysqli_error($conn) . '</div>';
+    }
+} else {
+    echo '<div class="log-item log-info">ℹ `lead_status` table exists.</div>';
+    // Ensure default rows exist
+    $checkRows = mysqli_query($conn, "SELECT COUNT(*) as cnt FROM `lead_status`");
+    $cntRow = mysqli_fetch_assoc($checkRows);
+    if (($cntRow['cnt'] ?? 0) == 0) {
+        mysqli_query($conn, "INSERT INTO `lead_status` (`id`, `company_id`, `name`, `color`, `status`) VALUES
+            (1, 0, 'New', '#0d6efd', 1),
+            (2, 0, 'Contacted', '#0dcaf0', 1),
+            (3, 0, 'Demo Scheduled', '#ffc107', 1),
+            (6, 0, 'Converted', '#198754', 1),
+            (7, 0, 'Lost', '#dc3545', 1)");
+        echo '<div class="log-item log-success">✓ Seeded default statuses in `lead_status`.</div>';
+    }
+}
+
+// 7d. Check & Create `lead_source_of_inquiry` table & default entries
+if (!tableExists('lead_source_of_inquiry')) {
+    $createLeadSourceSql = "CREATE TABLE IF NOT EXISTS `lead_source_of_inquiry` (
+        `id` INT(11) NOT NULL AUTO_INCREMENT PRIMARY KEY,
+        `name` VARCHAR(255) NOT NULL,
+        `status` TINYINT(1) NOT NULL DEFAULT 1,
+        `created_by` INT(11) NOT NULL DEFAULT 0,
+        `updated_by` INT(11) NOT NULL DEFAULT 0,
+        `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        `updated_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        KEY `status` (`status`)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4";
+    $q = mysqli_query($conn, $createLeadSourceSql);
+    if ($q) {
+        echo '<div class="log-item log-success">✓ Created `lead_source_of_inquiry` table successfully.</div>';
+        mysqli_query($conn, "INSERT INTO `lead_source_of_inquiry` (`id`, `name`, `status`) VALUES
+            (1, 'Website Direct', 1),
+            (2, 'Cold Call', 1),
+            (3, 'Referral', 1),
+            (4, 'LinkedIn', 1),
+            (5, 'Google Search', 1),
+            (6, 'Other', 1)
+            ON DUPLICATE KEY UPDATE `name` = VALUES(`name`)");
+    } else {
+        echo '<div class="log-item log-error">✗ Failed to create `lead_source_of_inquiry` table: ' . mysqli_error($conn) . '</div>';
+    }
+} else {
+    echo '<div class="log-item log-info">ℹ `lead_source_of_inquiry` table exists.</div>';
+    $checkRows = mysqli_query($conn, "SELECT COUNT(*) as cnt FROM `lead_source_of_inquiry`");
+    $cntRow = mysqli_fetch_assoc($checkRows);
+    if (($cntRow['cnt'] ?? 0) == 0) {
+        mysqli_query($conn, "INSERT INTO `lead_source_of_inquiry` (`id`, `name`, `status`) VALUES
+            (1, 'Website Direct', 1),
+            (2, 'Cold Call', 1),
+            (3, 'Referral', 1),
+            (4, 'LinkedIn', 1),
+            (5, 'Google Search', 1),
+            (6, 'Other', 1)");
+        echo '<div class="log-item log-success">✓ Seeded default sources in `lead_source_of_inquiry`.</div>';
+    }
+}
+
+// 7e. Check & Create `lead_employee` table
+if (!tableExists('lead_employee')) {
+    $createLeadEmpSql = "CREATE TABLE IF NOT EXISTS `lead_employee` (
+        `id` INT(11) NOT NULL AUTO_INCREMENT PRIMARY KEY,
+        `name` VARCHAR(255) NOT NULL,
+        `status` TINYINT(1) NOT NULL DEFAULT 1,
+        `created_by` INT(11) NOT NULL DEFAULT 0,
+        `updated_by` INT(11) NOT NULL DEFAULT 0,
+        `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        `updated_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        KEY `status` (`status`)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4";
+    $q = mysqli_query($conn, $createLeadEmpSql);
+    if ($q) {
+        echo '<div class="log-item log-success">✓ Created `lead_employee` table successfully.</div>';
+    } else {
+        echo '<div class="log-item log-error">✗ Failed to create `lead_employee` table: ' . mysqli_error($conn) . '</div>';
+    }
+} else {
+    echo '<div class="log-item log-info">ℹ `lead_employee` table exists.</div>';
+}
+
 // 8. Create `company_lead` table for Company Leads
 if (!tableExists('company_lead')) {
     $createCompanyLeadSql = "CREATE TABLE IF NOT EXISTS `company_lead` (
