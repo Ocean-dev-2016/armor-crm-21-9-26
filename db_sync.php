@@ -251,8 +251,46 @@ if (!tableExists('lead_followups')) {
 } else {
     echo '<div class="log-item log-info">ℹ `lead_followups` table exists.</div>';
 }
-
-
+// 7b. Check & Create `lead_followup_type` table & default entries
+if (!tableExists('lead_followup_type')) {
+    $createLeadFuTypeSql = "CREATE TABLE IF NOT EXISTS `lead_followup_type` (
+        `id` INT(11) NOT NULL AUTO_INCREMENT PRIMARY KEY,
+        `name` VARCHAR(150) NOT NULL,
+        `status` TINYINT(1) NOT NULL DEFAULT 1,
+        `created_by` INT(11) NULL DEFAULT NULL,
+        `updated_by` INT(11) NULL DEFAULT NULL,
+        `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        `updated_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        KEY `idx_status` (`status`)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4";
+    $q = mysqli_query($conn, $createLeadFuTypeSql);
+    if ($q) {
+        echo '<div class="log-item log-success">✓ Created `lead_followup_type` table successfully.</div>';
+        mysqli_query($conn, "INSERT INTO `lead_followup_type` (`id`, `name`, `status`) VALUES
+            (1, 'Phone Call', 1),
+            (2, 'WhatsApp', 1),
+            (3, 'Live Demo', 1),
+            (4, 'Meeting', 1),
+            (5, 'Note / Email', 1)
+            ON DUPLICATE KEY UPDATE `name` = VALUES(`name`)");
+    } else {
+        echo '<div class="log-item log-error">✗ Failed to create `lead_followup_type` table: ' . mysqli_error($conn) . '</div>';
+    }
+} else {
+    echo '<div class="log-item log-info">ℹ `lead_followup_type` table exists.</div>';
+    // Ensure default rows exist
+    $checkRows = mysqli_query($conn, "SELECT COUNT(*) as cnt FROM `lead_followup_type`");
+    $cntRow = mysqli_fetch_assoc($checkRows);
+    if (($cntRow['cnt'] ?? 0) == 0) {
+        mysqli_query($conn, "INSERT INTO `lead_followup_type` (`id`, `name`, `status`) VALUES
+            (1, 'Phone Call', 1),
+            (2, 'WhatsApp', 1),
+            (3, 'Live Demo', 1),
+            (4, 'Meeting', 1),
+            (5, 'Note / Email', 1)");
+        echo '<div class="log-item log-success">✓ Seeded default types in `lead_followup_type`.</div>';
+    }
+}
 
 // 8. Create `company_lead` table for Company Leads
 if (!tableExists('company_lead')) {
