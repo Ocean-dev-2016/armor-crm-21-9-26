@@ -166,16 +166,20 @@ if (!tableExists('lead')) {
         `business_name` VARCHAR(255) NOT NULL,
         `contact_name` VARCHAR(150) NOT NULL,
         `email` VARCHAR(150) NULL DEFAULT NULL,
+        `website` VARCHAR(255) NULL DEFAULT NULL,
         `mobile_no` VARCHAR(25) NOT NULL,
+        `whatsapp_no` VARCHAR(25) NULL DEFAULT NULL,
         `city` VARCHAR(100) NULL DEFAULT NULL,
         `country_id` INT(11) NULL DEFAULT NULL,
         `state_id` INT(11) NULL DEFAULT NULL,
         `city_id` INT(11) NULL DEFAULT NULL,
+        `pincode` VARCHAR(20) NULL DEFAULT NULL,
         `address` TEXT NULL DEFAULT NULL,
         `team_size` VARCHAR(50) NULL DEFAULT '1-10',
         `interested_plan_id` INT(11) NULL DEFAULT NULL,
         `lead_source` VARCHAR(100) NULL DEFAULT 'Direct',
-        `lead_stage` ENUM('new', 'contacted', 'demo_scheduled', 'trial_active', 'negotiation', 'converted', 'lost') NOT NULL DEFAULT 'new',
+        `lead_stage` VARCHAR(50) NOT NULL DEFAULT '1',
+        `assign_to` INT(11) NULL DEFAULT NULL,
         `demo_date` DATETIME NULL DEFAULT NULL,
         `converted_company_id` INT(11) NULL DEFAULT NULL,
         `requirements` TEXT NULL DEFAULT NULL,
@@ -200,20 +204,31 @@ if (!tableExists('lead')) {
     echo '<div class="log-item log-info">ℹ `lead` table exists.</div>';
 }
 
-// 6b. Add country_id, state_id, city_id, address to lead if not present
+// 6b. Add all extended columns to lead table if not present
 if (tableExists('lead')) {
-    if (!columnExists('lead', 'country_id')) {
-        mysqli_query($conn, "ALTER TABLE `lead` ADD COLUMN `country_id` INT(11) NULL DEFAULT NULL AFTER `city`");
+    $leadCols = [
+        'website'      => "VARCHAR(255) NULL DEFAULT NULL AFTER `email`",
+        'whatsapp_no'  => "VARCHAR(25) NULL DEFAULT NULL AFTER `mobile_no`",
+        'city'         => "VARCHAR(100) NULL DEFAULT NULL AFTER `whatsapp_no`",
+        'country_id'   => "INT(11) NULL DEFAULT NULL AFTER `city`",
+        'state_id'     => "INT(11) NULL DEFAULT NULL AFTER `country_id`",
+        'city_id'      => "INT(11) NULL DEFAULT NULL AFTER `state_id`",
+        'pincode'      => "VARCHAR(20) NULL DEFAULT NULL AFTER `city_id`",
+        'address'      => "TEXT NULL DEFAULT NULL AFTER `pincode`",
+        'assign_to'    => "INT(11) NULL DEFAULT NULL AFTER `lead_stage`"
+    ];
+    foreach ($leadCols as $colName => $colDef) {
+        if (!columnExists('lead', $colName)) {
+            $q = mysqli_query($conn, "ALTER TABLE `lead` ADD COLUMN `$colName` $colDef");
+            if ($q) {
+                echo '<div class="log-item log-success">✓ Added `' . $colName . '` column to `lead` table successfully.</div>';
+            } else {
+                echo '<div class="log-item log-error">✗ Failed to add `' . $colName . '` to `lead`: ' . mysqli_error($conn) . '</div>';
+            }
+        }
     }
-    if (!columnExists('lead', 'state_id')) {
-        mysqli_query($conn, "ALTER TABLE `lead` ADD COLUMN `state_id` INT(11) NULL DEFAULT NULL AFTER `country_id`");
-    }
-    if (!columnExists('lead', 'city_id')) {
-        mysqli_query($conn, "ALTER TABLE `lead` ADD COLUMN `city_id` INT(11) NULL DEFAULT NULL AFTER `state_id`");
-    }
-    if (!columnExists('lead', 'address')) {
-        mysqli_query($conn, "ALTER TABLE `lead` ADD COLUMN `address` TEXT NULL DEFAULT NULL AFTER `city_id`");
-    }
+    // Also change lead_stage to VARCHAR(50) if it is ENUM
+    mysqli_query($conn, "ALTER TABLE `lead` MODIFY COLUMN `lead_stage` VARCHAR(50) NOT NULL DEFAULT '1'");
 }
 
 // 7. Check & Rename / Create `lead_followups` table for Superadmin Lead Follow-ups & Reminders
@@ -633,6 +648,12 @@ if (!tableExists('company_lead_followups')) {
     }
 } else {
     echo '<div class="log-item log-info">ℹ `company_lead_followups` table already exists.</div>';
+}
+
+if (tableExists('company_lead_followups')) {
+    if (!columnExists('company_lead_followups', 'response')) {
+        mysqli_query($conn, "ALTER TABLE `company_lead_followups` ADD COLUMN `response` TEXT NULL DEFAULT NULL AFTER `remarks`");
+    }
 }
 
 // 13. Create `customer_type` table for Master
