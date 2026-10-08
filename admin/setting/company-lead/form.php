@@ -241,7 +241,7 @@ include BASE_PATH . '/component/breadcrumb.php';
 
                         <div class="col-md-3">
                             <div class="mb-2">
-                                <div class="d-flex align-items-center justify-content-between mb-1">
+                                <div class="d-flex align-items-center justify-content-between mb-2">
                                     <label class="form-label mb-0">WhatsApp No</label>
                                     <div class="form-check form-check-inline mb-0">
                                         <input class="form-check-input" type="checkbox" id="same_as_mobile">

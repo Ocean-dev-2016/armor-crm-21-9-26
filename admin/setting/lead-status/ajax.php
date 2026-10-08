@@ -28,8 +28,8 @@ handle_datatable([
     'table'                => $tbl,
     'search_columns'       => ['name', 'color'],
     'order_columns'        => $columns,
-    'default_order_column' => 'id',
-    'default_order_dir'    => 'DESC',
+    'default_order_column' => 'order_by',
+    'default_order_dir'    => 'ASC',
     'row_callback'         => function ($row, $srNo) use ($tbl, $canEdit, $canDelete) {
         $colorCode = !empty($row['color']) ? htmlspecialchars($row['color']) : '#0e5a6c';
         
@@ -39,11 +39,13 @@ handle_datatable([
         </div>';
 
         return [
-            $srNo,
-            htmlspecialchars($row['name'] ?? ''),
-            $colorBadge,
-            dt_status_switch($row['id'], $row['status'], $tbl),
-            dt_action_dropdown($row['id'], $tbl, [
+            'DT_RowId'   => 'row_' . $row['id'],
+            'DT_RowData' => ['id' => $row['id']],
+            0            => dt_drag_sr_no($srNo),
+            1            => htmlspecialchars($row['name'] ?? ''),
+            2            => $colorBadge,
+            3            => dt_status_switch($row['id'], $row['status'], $tbl),
+            4            => dt_action_dropdown($row['id'], $tbl, [
                 'can_edit'   => $canEdit,
                 'can_delete' => $canDelete,
                 'edit_class' => 'lead_status_edit'

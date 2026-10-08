@@ -6,19 +6,20 @@ require_once __DIR__ . '/../../../conn/helper.php';
 
 include BASE_PATH . '/include/header.php';
 
-$pageNm = 'Company Lead';
-$tbl = 'company_lead';
-$moduleKey = 'company-lead';
+$pageNm = 'Lead';
+$tbl = 'lead';
+
+// Only Superadmin can access SaaS Leads
+if (!$isSuperadmin) {
+    echo "<div class='container py-5 text-center'><h3 class='text-danger'>Access Denied</h3><p>Only Superadmin can access SaaS Platform Leads.</p><a href='" . SITE_URL . "' class='btn btn-primary'>Back to Home</a></div>";
+    include BASE_PATH . '/include/footer.php';
+    exit;
+}
 
 $id = isset($_GET['id']) ? decrypt_id($_GET['id']) : 0;
 if (!$id && isset($_GET['id']) && is_numeric($_GET['id'])) {
     $id = (int)$_GET['id'];
 }
-
-checkPermissionOrDeny($moduleKey, 'views');
-
-$isSuperadmin = isset($_SESSION['user_type']) && $_SESSION['user_type'] === 'superadmin';
-$sessionCompanyId = (isset($_SESSION['company_id']) && (int)$_SESSION['company_id'] > 0) ? (int)$_SESSION['company_id'] : 0;
 
 if ($id <= 0) {
     die('Invalid lead ID.');
@@ -29,85 +30,52 @@ if (!$lead) {
     die($pageNm . ' not found.');
 }
 
-if (!$isSuperadmin && $sessionCompanyId > 0 && (int)$lead['company_id'] !== $sessionCompanyId) {
-    die('Unauthorized access.');
-}
-
-$userType = $_SESSION['user_type'] ?? '';
-$currentUserId = getCurrentUserId();
-if ($userType === 'user' && (int)($lead['assigned_to'] ?? 0) !== $currentUserId) {
-    die('Unauthorized access.');
-}
-
 // Format dates
-$leadInqDate = (!empty($lead['inquiry_date']) && $lead['inquiry_date'] !== '0000-00-00') ? date('d-m-Y', strtotime($lead['inquiry_date'])) : '--';
+$leadInqDate = (!empty($lead['created_at']) && $lead['created_at'] !== '0000-00-00 00:00:00') ? date('d-m-Y', strtotime($lead['created_at'])) : '--';
+$demoDateFormatted = (!empty($lead['demo_date']) && $lead['demo_date'] !== '0000-00-00 00:00:00') ? date('d-m-Y', strtotime($lead['demo_date'])) : '--';
 
 // Resolve names
 $countryName = !empty($lead['country_id']) ? (db_row("SELECT name FROM country WHERE id = " . (int)$lead['country_id'])['name'] ?? '--') : '--';
 $stateName   = !empty($lead['state_id']) ? (db_row("SELECT name FROM state WHERE id = " . (int)$lead['state_id'])['name'] ?? '--') : '--';
-$cityName    = !empty($lead['city_id']) ? (db_row("SELECT name FROM city WHERE id = " . (int)$lead['city_id'])['name'] ?? '--') : '--';
-$sourceName  = !empty($lead['source_of_inquiry_id']) ? (db_row("SELECT name FROM source_of_inquiry WHERE id = " . (int)$lead['source_of_inquiry_id'])['name'] ?? '--') : '--';
-$assignedUserName = !empty($lead['assigned_to']) ? (db_row("SELECT name FROM users WHERE id = " . (int)$lead['assigned_to'])['name'] ?? '--') : '--';
-$createdUserName  = !empty($lead['created_by']) ? (db_row("SELECT name FROM users WHERE id = " . (int)$lead['created_by'])['name'] ?? '--') : '--';
+$cityName    = !empty($lead['city_id']) ? (db_row("SELECT name FROM city WHERE id = " . (int)$lead['city_id'])['name'] ?? '--') : (!empty($lead['city']) ? $lead['city'] : '--');
+$sourceName  = !empty($lead['lead_source']) ? (db_row("SELECT name FROM lead_source_of_inquiry WHERE id = " . (int)$lead['lead_source'] . " OR name = '" . db_escape($lead['lead_source']) . "'")['name'] ?? $lead['lead_source']) : '--';
+$assignedUserName = !empty($lead['assign_to']) ? (db_row("SELECT name FROM lead_employee WHERE id = " . (int)$lead['assign_to'] . " OR name = '" . db_escape($lead['assign_to']) . "'")['name'] ?? $lead['assign_to']) : '--';
+$createdUserName  = !empty($lead['created_by']) ? (db_row("SELECT name FROM users WHERE id = " . (int)$lead['created_by'])['name'] ?? 'Superadmin') : 'Superadmin';
+$interestedPlanName = !empty($lead['interested_plan_id']) ? (db_row("SELECT name FROM plan WHERE id = " . (int)$lead['interested_plan_id'])['name'] ?? '--') : '--';
 
-// Resolve inquiry status if numeric
-$inqStatusLabel = $lead['inquiry_status'] ?: 'New Lead';
-$inqStatusColor = '#0e5a6c';
-if (!empty($lead['inquiry_status']) && is_numeric($lead['inquiry_status'])) {
-    $mInq = db_row("SELECT name, color FROM marketing_status WHERE id = " . (int)$lead['inquiry_status']);
-    if ($mInq && !empty($mInq['name'])) {
-        $inqStatusLabel = $mInq['name'];
-        if (!empty($mInq['color'])) $inqStatusColor = $mInq['color'];
-    }
-} else {
-    $mInq = db_row("SELECT id, name, color FROM marketing_status WHERE name = '" . db_escape((string)$lead['inquiry_status']) . "' AND type = 'Lead' LIMIT 1");
-    if ($mInq && !empty($mInq['color'])) {
-        $inqStatusColor = $mInq['color'];
-    }
-}
+// Lead stage label & color
+$stageVal = $lead['lead_stage'] ?? '';
+$inqStatusLabel = get_lead_stage_label($stageVal) ?: 'New Lead';
+$stageColor = get_lead_status_color($stageVal) ?: '#4f46e5';
 
-// Check if customer is already created for this lead
-$existingCust = db_row("SELECT id FROM customer WHERE company_lead_id = {$lead['id']} LIMIT 1");
-$hasCustomer = !empty($existingCust);
-if ($hasCustomer) {
+// Check if tenant company is already created for this lead
+$hasCompany = !empty($lead['converted_company_id']) && (int)$lead['converted_company_id'] > 0;
+if ($hasCompany) {
     $inqStatusLabel = 'Converted';
-    $inqStatusColor = '#10b981';
-}
-
-// Fetch marketing statuses for assigned user / admin to change status from view page
-$canChangeStatus = hasPermission($moduleKey, 'updates') || ($userType === 'user' && (int)($lead['assigned_to'] ?? 0) === $currentUserId);
-$viewStatuses = [];
-if ($canChangeStatus && !$hasCustomer) {
-    $mktLeadCond = "status = 1 AND type = 'Lead'";
-    if (!$isSuperadmin && $sessionCompanyId > 0) {
-        $mktLeadCond .= " AND (company_id = $sessionCompanyId OR company_id = 0)";
-    }
-    $viewStatuses = db_rows("SELECT id, name, color FROM marketing_status WHERE $mktLeadCond ORDER BY order_by ASC, name ASC");
+    $stageColor = '#10b981';
 }
 
 // Fetch all follow-ups of this lead
-$allLeadFollowups = db_rows("SELECT clf.*, 
+$allLeadFollowups = db_rows("SELECT lf.*, 
                                     lft.name as followup_through_name, 
-                                    fr.name as reason_name, 
                                     u.name as creator_name,
-                                    msl.name as lead_status_display,
-                                    msl.color as lead_color
-                             FROM company_lead_followups clf
-                             LEFT JOIN lead_followup_type lft ON lft.id = clf.followup_type_id
-                             LEFT JOIN followup_reason fr ON fr.id = clf.reason_id
-                             LEFT JOIN users u ON u.id = clf.created_by
-                             LEFT JOIN marketing_status msl ON (msl.id = clf.inquiry_status OR msl.name = clf.inquiry_status) AND msl.type = 'Lead' AND (msl.company_id = clf.company_id OR msl.company_id = 0)
-                             WHERE clf.lead_id = {$lead['id']}
-                             ORDER BY clf.followup_date DESC");
+                                    ls.name as lead_status_display,
+                                    ls.color as lead_color
+                             FROM lead_followups lf
+                             LEFT JOIN lead_followup_type lft ON (lft.id = lf.followup_type OR lft.name = lf.followup_type)
+                             LEFT JOIN users u ON u.id = lf.created_by
+                             LEFT JOIN lead_status ls ON (ls.id = lf.stage OR ls.name = lf.stage)
+                             WHERE lf.lead_id = {$lead['id']}
+                             ORDER BY lf.followup_date DESC");
 
 // Filter followups where response is present or status is completed
 $responseFollowups = array_filter($allLeadFollowups, function($f) {
-    $st = strtolower(trim((string)$f['followup_status']));
-    return in_array($st, ['completed', 'close', 'closed', '4', 'end']) || !empty(trim((string)$f['response']));
+    $st = strtolower(trim((string)$f['reminder_status']));
+    return $st === 'completed' || !empty(trim((string)$f['response']));
 });
 
 $breadcrumbType = 'form';
-$parentUrl = SITE_URL . 'company-lead';
+$parentUrl = SITE_URL . 'lead';
 $customName = 'View';
 include BASE_PATH . '/component/breadcrumb.php';
 ?>
@@ -135,36 +103,39 @@ include BASE_PATH . '/component/breadcrumb.php';
                         </li>
                     </ul>
                     <div class="d-flex gap-2">
-                        <?php if (!$hasCustomer): ?>
-                            <a href="<?= SITE_URL ?>company-lead/edit/<?= encrypt_id($lead['id']) ?>" class="btn btn-primary btn-sm px-3">
+                        <?php if (!$hasCompany): ?>
+                            <a href="<?= SITE_URL ?>lead/edit/<?= encrypt_id($lead['id']) ?>" class="btn btn-primary btn-sm px-3">
                                 <i data-lucide="edit" class="fs-13 align-middle me-1"></i> Edit
                             </a>
                         <?php endif; ?>
+                        <a href="<?= SITE_URL ?>lead" class="btn btn-outline-secondary btn-sm px-3">
+                            <i data-lucide="arrow-left" class="fs-13 align-middle me-1"></i> Back to List
+                        </a>
                     </div>
                 </div>
             </div>
             <div class="card-body p-4">
                 <div class="tab-content" id="leadViewTabContent">
-                    <!-- TAB 1: INQUIRY DETAILS (Matching image design) -->
+                    <!-- TAB 1: INQUIRY DETAILS (Matching Company Lead Design) -->
                     <div class="tab-pane fade show active" id="inquiry-details-pane" role="tabpanel">
                         <div class="row g-4 fs-13 text-secondary">
                             <!-- Column 1 -->
                             <div class="col-md-4">
                                 <div class="mb-3">
-                                    <span class="text-dark fw-bold">Inquiry No:</span>
-                                    <span class="ms-1 text-muted"><?= htmlspecialchars($lead['inquiry_no'] ?: ('INQ-' . $lead['id'])) ?></span>
+                                    <span class="text-dark fw-bold">Inquiry / Lead No:</span>
+                                    <span class="ms-1 text-muted"><?= htmlspecialchars($lead['lead_number'] ?: ('OI-' . $lead['id'])) ?></span>
                                 </div>
                                 <div class="mb-3">
                                     <span class="text-dark fw-bold">Contact Person Name:</span>
-                                    <span class="ms-1 text-muted"><?= htmlspecialchars($lead['contact_person'] ?: '--') ?></span>
+                                    <span class="ms-1 text-muted"><?= htmlspecialchars($lead['contact_name'] ?: '--') ?></span>
                                 </div>
                                 <div class="mb-3">
                                     <span class="text-dark fw-bold">Email:</span>
                                     <span class="ms-1 text-muted"><?= htmlspecialchars($lead['email'] ?: '--') ?></span>
                                 </div>
                                 <div class="mb-3">
-                                    <span class="text-dark fw-bold">Followup Status:</span>
-                                    <span class="ms-1 text-muted"><?= htmlspecialchars($lead['followup_status'] ?: 'Open') ?></span>
+                                    <span class="text-dark fw-bold">Team Size:</span>
+                                    <span class="ms-1 text-muted"><?= htmlspecialchars(get_lead_team_size_label($lead['team_size'] ?? 1)) ?></span>
                                 </div>
                                 <div class="mb-3">
                                     <span class="text-dark fw-bold">Inquiry Assigned To:</span>
@@ -207,44 +178,32 @@ include BASE_PATH . '/component/breadcrumb.php';
                                     <span class="ms-1 text-muted"><?= htmlspecialchars($countryName) ?></span>
                                 </div>
                                 <div class="mb-3">
-                                    <span class="text-dark fw-bold">Area:</span>
-                                    <span class="ms-1 text-muted"><?= htmlspecialchars($lead['area'] ?: '--') ?></span>
+                                    <span class="text-dark fw-bold">Demo / Meeting Date:</span>
+                                    <span class="ms-1 text-muted"><?= htmlspecialchars($demoDateFormatted) ?></span>
                                 </div>
                             </div>
 
                             <!-- Column 3 -->
                             <div class="col-md-4">
                                 <div class="mb-3">
-                                    <span class="text-dark fw-bold">Customer Name:</span>
-                                    <span class="ms-1 text-muted"><?= htmlspecialchars($lead['customer_name'] ?: '--') ?></span>
+                                    <span class="text-dark fw-bold">Business Name:</span>
+                                    <span class="ms-1 text-muted"><?= htmlspecialchars($lead['business_name'] ?: '--') ?></span>
                                 </div>
                                 <div class="mb-3">
                                     <span class="text-dark fw-bold">WhatsApp No:</span>
                                     <span class="ms-1 text-muted"><?= htmlspecialchars($lead['whatsapp_no'] ?: '--') ?></span>
                                 </div>
-                                <div class="mb-3 d-flex align-items-center flex-wrap gap-2">
+                                <div class="mb-3">
                                     <span class="text-dark fw-bold">Inquiry Status:</span>
-                                    <?php if ($canChangeStatus && !$hasCustomer && !empty($viewStatuses)): ?>
-                                        <div class="d-inline-block" style="min-width: 150px;">
-                                            <select class="form-select form-select-sm fw-semibold shadow-none lead-status-select-view" 
-                                                    data-id="<?= (int)$lead['id'] ?>" 
-                                                    data-original="<?= htmlspecialchars($inqStatusLabel, ENT_QUOTES) ?>"
-                                                    style="background-color: <?= $inqStatusColor ?>15; color: <?= $inqStatusColor ?>; border: 1.5px solid <?= $inqStatusColor ?>60 !important; border-radius: 20px; font-size: 12px; padding: 4px 26px 4px 12px; cursor: pointer; height: auto;">
-                                                <?php foreach ($viewStatuses as $st): 
-                                                    $isSel = (strcasecmp($st['name'], $inqStatusLabel) === 0 || (string)$st['id'] === (string)($lead['inquiry_status'] ?? ''));
-                                                    $stCol = !empty($st['color']) ? $st['color'] : '#495057';
-                                                ?>
-                                                    <option value="<?= (int)$st['id'] ?>" data-name="<?= htmlspecialchars($st['name'], ENT_QUOTES) ?>" data-color="<?= $stCol ?>" style="color: <?= $stCol ?>; font-weight: 600; background-color: #ffffff;" <?= $isSel ? 'selected' : '' ?>>
-                                                        <?= htmlspecialchars($st['name']) ?>
-                                                    </option>
-                                                <?php endforeach; ?>
-                                            </select>
-                                        </div>
-                                    <?php else: ?>
-                                        <span class="badge border" style="background-color: <?= $inqStatusColor ?>1a; color: <?= $inqStatusColor ?>; border-color: <?= $inqStatusColor ?>40 !important; font-size: 12px; padding: 5px 12px; border-radius: 20px;">
+                                    <span class="ms-1">
+                                        <span class="badge rounded-pill px-2 py-1" style="background-color: <?= $stageColor ?>26; color: <?= $stageColor ?>; border: 1px solid <?= $stageColor ?>4D;">
                                             <?= htmlspecialchars($inqStatusLabel) ?>
                                         </span>
-                                    <?php endif; ?>
+                                    </span>
+                                </div>
+                                <div class="mb-3">
+                                    <span class="text-dark fw-bold">Interested Plan:</span>
+                                    <span class="ms-1 text-muted"><?= htmlspecialchars($interestedPlanName) ?></span>
                                 </div>
                                 <div class="mb-3">
                                     <span class="text-dark fw-bold">Inquiry Created By:</span>
@@ -257,26 +216,18 @@ include BASE_PATH . '/component/breadcrumb.php';
                             </div>
                         </div>
 
-                        <!-- Requirement Details & Attachments Full-width rows -->
+                        <!-- Requirement Details & Notes Full-width rows -->
                         <div class="row g-3 mt-1 fs-13">
                             <div class="col-12">
                                 <div>
-                                    <span class="text-dark fw-bold">Requirement Details:</span>
-                                    <span class="ms-1 text-muted"><?= nl2br(htmlspecialchars($lead['requirement_details'] ?: '--')) ?></span>
+                                    <span class="text-dark fw-bold">Requirements:</span>
+                                    <span class="ms-1 text-muted"><?= nl2br(htmlspecialchars($lead['requirements'] ?: '--')) ?></span>
                                 </div>
                             </div>
                             <div class="col-12">
                                 <div>
-                                    <span class="text-dark fw-bold">Attachments:</span>
-                                    <span class="ms-1 text-muted">
-                                        <?php if (!empty($lead['attachment'])): ?>
-                                            <a href="<?= SITE_URL ?>uploads/lead/<?= htmlspecialchars($lead['attachment']) ?>" target="_blank" class="text-primary text-decoration-none">
-                                                <i data-lucide="paperclip" class="fs-13 align-middle me-1"></i> View Attachment (<?= htmlspecialchars($lead['attachment']) ?>)
-                                            </a>
-                                        <?php else: ?>
-                                            No attachments available
-                                        <?php endif; ?>
-                                    </span>
+                                    <span class="text-dark fw-bold">Notes / Interaction History:</span>
+                                    <span class="ms-1 text-muted"><?= nl2br(htmlspecialchars($lead['notes'] ?: '--')) ?></span>
                                 </div>
                             </div>
                         </div>
@@ -285,8 +236,8 @@ include BASE_PATH . '/component/breadcrumb.php';
                     <!-- TAB 2: INQUIRY HISTORY (All followups of this inquiry) -->
                     <div class="tab-pane fade" id="inquiry-history-pane" role="tabpanel">
                         <div class="d-flex justify-content-between align-items-center mb-3">
-                            <h6 class="fw-bold text-dark mb-0">Follow-up Activity for Inquiry: <?= htmlspecialchars($lead['inquiry_no'] ?: ('INQ-' . $lead['id'])) ?></h6>
-                            <a href="<?= SITE_URL ?>company-lead-followup?lead_id=<?= $lead['id'] ?>" class="btn btn-outline-primary btn-sm">
+                            <h6 class="fw-bold text-dark mb-0">Follow-up Activity for Inquiry: <?= htmlspecialchars($lead['lead_number'] ?: ('OI-' . $lead['id'])) ?></h6>
+                            <a href="<?= SITE_URL ?>lead/followup-history/<?= encrypt_id($lead['id']) ?>" class="btn btn-outline-primary btn-sm">
                                 <i data-lucide="external-link" class="fs-13 align-middle me-1"></i> Open Follow-up Manager
                             </a>
                         </div>
@@ -303,43 +254,48 @@ include BASE_PATH . '/component/breadcrumb.php';
                                             <th style="width: 50px;">Sr.</th>
                                             <th>Follow-up Through</th>
                                             <th>Follow-up Date & Time</th>
-                                            <th>Reason</th>
-                                            <th>Inquiry Status</th>
-                                            <th>Remarks</th>
+                                            <th>Lead Status</th>
+                                            <th>Discussion Remarks</th>
                                             <th>Status</th>
                                             <th>Created By</th>
                                             <th>Created Date</th>
+                                            <th style="width: 80px;" class="text-center">Action</th>
                                         </tr>
                                     </thead>
                                     <tbody>
                                         <?php $sr = 1; foreach ($allLeadFollowups as $f): 
-                                            $st = strtolower(trim((string)$f['followup_status']));
-                                            $isDone = in_array($st, ['completed', 'close', 'closed', '4', 'end']);
+                                            $st = strtolower(trim((string)$f['reminder_status']));
+                                            $isDone = ($st === 'completed');
+                                            $typeName = $f['followup_through_name'] ?: get_lead_followup_type_label($f['followup_type']);
+                                            $stgName = $f['lead_status_display'] ?: get_lead_stage_label($f['stage']);
+                                            $stgColor = $f['lead_color'] ?: get_lead_status_color($f['stage']);
                                         ?>
-                                            <tr>
+                                            <tr id="fu-row-<?= (int)$f['id'] ?>">
                                                 <td><?= $sr++ ?></td>
-                                                <td><span class="badge bg-light text-dark border"><?= htmlspecialchars($f['followup_through_name'] ?: '-') ?></span></td>
+                                                <td><span class="badge bg-light text-dark border"><?= htmlspecialchars($typeName ?: '-') ?></span></td>
                                                 <td><?= !empty($f['followup_date']) ? date('d-m-Y h:i A', strtotime($f['followup_date'])) : '-' ?></td>
-                                                <td><?= htmlspecialchars($f['reason_name'] ?: '-') ?></td>
                                                 <td>
-                                                    <?php 
-                                                        $inqLabel = !empty($f['lead_status_display']) ? $f['lead_status_display'] : ($f['inquiry_status'] ?: '-');
-                                                        $inqColor = !empty($f['lead_color']) ? $f['lead_color'] : '#6c757d';
-                                                    ?>
-                                                    <span class="badge fs-11 px-2 py-1 rounded-pill" style="background-color: <?= $inqColor ?>26; color: <?= $inqColor ?>; border: 1px solid <?= $inqColor ?>4D;">
-                                                        <?= htmlspecialchars($inqLabel) ?>
+                                                    <span class="badge fs-11 px-2 py-1 rounded-pill" style="background-color: <?= $stgColor ?>26; color: <?= $stgColor ?>; border: 1px solid <?= $stgColor ?>4D;">
+                                                        <?= htmlspecialchars($stgName ?: '-') ?>
                                                     </span>
                                                 </td>
-                                                <td><div class="text-wrap" style="max-width:250px; font-size:13px;"><?= nl2br(htmlspecialchars($f['remarks'] ?: '-')) ?></div></td>
+                                                <td><div class="text-wrap" style="max-width:260px; font-size:13px;"><?= nl2br(htmlspecialchars($f['remarks'] ?: '-')) ?></div></td>
                                                 <td>
                                                     <?php if ($isDone): ?>
                                                         <span class="badge bg-success-subtle text-success border border-success-subtle"><i data-lucide="check" class="fs-10 align-middle me-1"></i>Completed</span>
+                                                    <?php elseif ($st === 'missed'): ?>
+                                                        <span class="badge bg-danger-subtle text-danger border border-danger-subtle">Missed</span>
                                                     <?php else: ?>
                                                         <span class="badge bg-warning-subtle text-warning border border-warning-subtle">Pending</span>
                                                     <?php endif; ?>
                                                 </td>
                                                 <td><?= htmlspecialchars($f['creator_name'] ?: '-') ?></td>
                                                 <td><?= !empty($f['created_at']) ? date('d-m-Y h:i A', strtotime($f['created_at'])) : '-' ?></td>
+                                                <td class="text-center">
+                                                    <button type="button" class="btn btn-outline-danger btn-sm btn-icon btn-delete-view-fu" data-id="<?= (int)$f['id'] ?>" title="Delete Follow-up">
+                                                        <i data-lucide="trash-2" class="fs-14"></i>
+                                                    </button>
+                                                </td>
                                             </tr>
                                         <?php endforeach; ?>
                                     </tbody>
@@ -366,24 +322,39 @@ include BASE_PATH . '/component/breadcrumb.php';
                                             <th style="width: 50px;">Sr.</th>
                                             <th>Follow-up Date & Time</th>
                                             <th>Follow-up Through</th>
-                                            <th>Reason</th>
+                                            <th>Lead Status</th>
                                             <th>Discussion Remarks</th>
                                             <th>Response</th>
                                             <th>Recorded By</th>
                                             <th>Completed At</th>
+                                            <th style="width: 80px;" class="text-center">Action</th>
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        <?php $sr = 1; foreach ($responseFollowups as $f): ?>
-                                            <tr>
+                                        <?php $sr = 1; foreach ($responseFollowups as $f): 
+                                            $typeName = $f['followup_through_name'] ?: get_lead_followup_type_label($f['followup_type']);
+                                            $stgName = $f['lead_status_display'] ?: get_lead_stage_label($f['stage']);
+                                            $stgColor = $f['lead_color'] ?: get_lead_status_color($f['stage']);
+                                            $respText = !empty($f['response']) ? $f['response'] : '-';
+                                        ?>
+                                            <tr id="fu-resp-row-<?= (int)$f['id'] ?>">
                                                 <td><?= $sr++ ?></td>
                                                 <td><?= !empty($f['followup_date']) ? date('d-m-Y h:i A', strtotime($f['followup_date'])) : '-' ?></td>
-                                                <td><span class="badge bg-light text-dark border"><?= htmlspecialchars($f['followup_through_name'] ?: '-') ?></span></td>
-                                                <td><?= htmlspecialchars($f['reason_name'] ?: '-') ?></td>
+                                                <td><span class="badge bg-light text-dark border"><?= htmlspecialchars($typeName ?: '-') ?></span></td>
+                                                <td>
+                                                    <span class="badge fs-11 px-2 py-1 rounded-pill" style="background-color: <?= $stgColor ?>26; color: <?= $stgColor ?>; border: 1px solid <?= $stgColor ?>4D;">
+                                                        <?= htmlspecialchars($stgName ?: '-') ?>
+                                                    </span>
+                                                </td>
                                                 <td><div class="text-wrap" style="max-width:250px; font-size:13px;"><?= nl2br(htmlspecialchars($f['remarks'] ?: '-')) ?></div></td>
-                                                <td><div class="text-wrap text-success fw-medium" style="max-width:280px; font-size:13px;"><?= nl2br(htmlspecialchars($f['response'] ?: '-')) ?></div></td>
+                                                <td><div class="text-wrap text-success fw-medium" style="max-width:280px; font-size:13px;"><?= nl2br(htmlspecialchars($respText)) ?></div></td>
                                                 <td><?= htmlspecialchars($f['creator_name'] ?: '-') ?></td>
                                                 <td><?= !empty($f['updated_at']) ? date('d-m-Y h:i A', strtotime($f['updated_at'])) : '-' ?></td>
+                                                <td class="text-center">
+                                                    <button type="button" class="btn btn-outline-danger btn-sm btn-icon btn-delete-view-fu" data-id="<?= (int)$f['id'] ?>" title="Delete Follow-up">
+                                                        <i data-lucide="trash-2" class="fs-14"></i>
+                                                    </button>
+                                                </td>
                                             </tr>
                                         <?php endforeach; ?>
                                     </tbody>
@@ -409,59 +380,39 @@ $(document).ready(function() {
         }
     });
 
-    // Quick status update from view page
-    $(document).on('change', '.lead-status-select-view', function() {
-        let $select = $(this);
-        let leadId = $select.data('id');
-        let newStatus = $select.val();
-        let originalStatus = $select.data('original');
-        let selectedOption = $select.find('option:selected');
-        let newColor = selectedOption.data('color') || '#0e5a6c';
+    // Delete follow-up inside View page
+    $(document).on('click', '.btn-delete-view-fu', function(e) {
+        e.preventDefault();
+        let fuId = $(this).data('id');
+        if (!fuId) return;
 
-        $select.css({
-            'background-color': newColor + '15',
-            'color': newColor,
-            'border-color': newColor + '60'
-        });
-
-        $select.prop('disabled', true);
-
-        $.ajax({
-            url: '<?= SITE_URL ?>admin/setting/company-lead/ajax.php',
-            type: 'POST',
-            data: {
-                action: 'update_inquiry_status',
-                lead_id: leadId,
-                status: newStatus
-            },
-            dataType: 'json',
-            success: function(res) {
-                $select.prop('disabled', false);
-                if (res.status === true) {
-                    showToast(res.message, 'success');
-                    $select.data('original', newStatus);
-                } else {
-                    showToast(res.message || 'Failed to update status.', 'error');
-                    $select.val(originalStatus);
-                    let origOpt = $select.find('option[value="' + originalStatus + '"]');
-                    let origColor = origOpt.data('color') || '#0e5a6c';
-                    $select.css({
-                        'background-color': origColor + '15',
-                        'color': origColor,
-                        'border-color': origColor + '60'
-                    });
-                }
-            },
-            error: function() {
-                $select.prop('disabled', false);
-                showToast('An unexpected error occurred.', 'error');
-                $select.val(originalStatus);
-                let origOpt = $select.find('option[value="' + originalStatus + '"]');
-                let origColor = origOpt.data('color') || '#0e5a6c';
-                $select.css({
-                    'background-color': origColor + '15',
-                    'color': origColor,
-                    'border-color': origColor + '60'
+        Swal.fire({
+            title: 'Are you sure?',
+            text: "Do you want to delete this follow-up record?",
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#ef4444',
+            cancelButtonColor: '#6b7280',
+            confirmButtonText: 'Yes, delete it!'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                $.ajax({
+                    url: SITE_URL + "admin/setting/lead/ajax.php",
+                    type: "POST",
+                    data: { action: 'delete_followup', followup_id: fuId },
+                    dataType: "json",
+                    success: function(res) {
+                        if (res.status === true) {
+                            showToast(res.message, 'success');
+                            $('#fu-row-' + fuId).fadeOut(300, function() { $(this).remove(); });
+                            $('#fu-resp-row-' + fuId).fadeOut(300, function() { $(this).remove(); });
+                        } else {
+                            showToast(res.message || 'Failed to delete follow-up', 'error');
+                        }
+                    },
+                    error: function() {
+                        showToast('Server error while deleting follow-up.', 'error');
+                    }
                 });
             }
         });

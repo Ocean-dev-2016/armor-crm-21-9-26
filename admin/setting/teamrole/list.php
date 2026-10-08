@@ -19,25 +19,29 @@ $tbl = 'role';
 include BASE_PATH . '/component/breadcrumb.php';
 ?>
 
-<!-- Team Role Modal -->
 <?php
+$isSuperadmin = isset($_SESSION['user_type']) && $_SESSION['user_type'] === 'superadmin';
 $modalId = 'TeamRoleModal';
 $formId = 'TeamRole';
 $hideNameField = true;
-$modalBodyContent = function() use ($company, $pageNm) { ?>
-    <div class="col-md-12">
-        <div class="mb-3">
-            <label class="form-label">Company</label>
-            <select name="company_id" id="select-single" class="form-select company_id">
-                <option value="">Select a Company</option>
-                <?php foreach ($company as $val) { ?>
-                    <option value="<?= $val['id'] ?>">
-                        <?= htmlspecialchars($val['name']) ?>
-                    </option>
-                <?php } ?>
-            </select>
+$modalBodyContent = function() use ($company, $pageNm, $isSuperadmin) { ?>
+    <?php if ($isSuperadmin) { ?>
+        <div class="col-md-12">
+            <div class="mb-3">
+                <label class="form-label">Company</label>
+                <select name="company_id" id="select-company-role" class="form-select company_id">
+                    <option value="">Select a Company</option>
+                    <?php foreach ($company as $val) { ?>
+                        <option value="<?= $val['id'] ?>">
+                            <?= htmlspecialchars($val['name']) ?>
+                        </option>
+                    <?php } ?>
+                </select>
+            </div>
         </div>
-    </div>
+    <?php } else { ?>
+        <input type="hidden" name="company_id" id="company_id" class="company_id" value="<?= (int)($_SESSION['company_id'] ?? 0) ?>">
+    <?php } ?>
     <div class="col-md-12">
         <div class="mb-3">
             <label class="form-label">Parent Company</label>
@@ -57,14 +61,14 @@ include BASE_PATH . '/component/modal.php';
 ?>
 <?php
 $ajaxUrl = SITE_URL . 'admin/setting/teamrole/ajax.php';
-$tableHeaders = [
-    'Sr No.',
-    'Company Name',
-    'Parent Company',
-    'Name',
-    'Status',
-    'Action'
-];
+$tableHeaders = ['Sr No.'];
+if ($isSuperadmin) {
+    $tableHeaders[] = 'Company Name';
+}
+$tableHeaders[] = 'Parent Company';
+$tableHeaders[] = 'Name';
+$tableHeaders[] = 'Status';
+$tableHeaders[] = 'Action';
 include BASE_PATH . '/component/datatable.php';
 ?>
 
@@ -74,17 +78,55 @@ include BASE_PATH . '/include/footer.php';
 <script>
 
     $(document).ready(function() {
+        let isSuperadmin = <?= $isSuperadmin ? 'true' : 'false' ?>;
+        let sessionCompanyId = '<?= (isset($_SESSION['company_id']) && (int)$_SESSION['company_id'] > 0) ? (int)$_SESSION['company_id'] : '' ?>';
+
         function setCompanyValue(val) {
-            $('#select-single').each(function() {
-                if (this.tomselect) {
-                    this.tomselect.setValue(val || '');
+            if (isSuperadmin) {
+                let el = $('#select-company-role')[0];
+                if (el && el.tomselect) {
+                    el.tomselect.setValue(val ? String(val) : '');
                 } else {
-                    $(this).val(val || '').trigger('change');
+                    $('#select-company-role').val(val || '').trigger('change');
                 }
+            } else {
+                $('#company_id').val(sessionCompanyId || val || '');
+            }
+        }
+
+        if (isSuperadmin && typeof TomSelect !== 'undefined' && $('#select-company-role').length) {
+            new TomSelect('#select-company-role', {
+                create: false,
+                allowEmptyOption: true
             });
         }
 
-        let sessionCompanyId = '<?= (isset($_SESSION['company_id']) && (int)$_SESSION['company_id'] > 0) ? (int)$_SESSION['company_id'] : '' ?>';
+        let validationRules = {
+            name: {
+                required: true,
+                minlength: 2,
+                maxlength: 100
+            },
+            parent_id: {
+                required: true,
+            }
+        };
+
+        let validationMessages = {
+            name: {
+                required: "Please enter name",
+                minlength: "Team Role name must be at least 2 characters",
+                maxlength: "Team Role name cannot exceed 100 characters"
+            },
+            parent_id: {
+                required: "Please select parent company",
+            }
+        };
+
+        if (isSuperadmin) {
+            validationRules.company_id = { required: true };
+            validationMessages.company_id = { required: "Please select company" };
+        }
 
         initMasterModalCrud({
             modalId: '#TeamRoleModal',
@@ -92,37 +134,10 @@ include BASE_PATH . '/include/footer.php';
             storeUrl: 'admin/setting/teamrole/store.php',
             pageNm: '<?= $pageNm ?>',
             editBtn: '.team_role_edit',
-            rules: {
-                name: {
-                    required: true,
-                    minlength: 2,
-                    maxlength: 100
-                },
-                company_id: {
-                    required: true,
-                },
-                parent_id: {
-                    required: true,
-                },
-            },
-            messages: {
-                name: {
-                    required: "Please enter name",
-                    minlength: "Team Role name must be at least 2 characters",
-                    maxlength: "Team Role name cannot exceed 100 characters"
-                },
-                company_id: {
-                    required: "Please select company",
-                },
-                parent_id: {
-                    required: "Please select parent company",
-                }
-            },
+            rules: validationRules,
+            messages: validationMessages,
             onReset: function() {
-                if (sessionCompanyId) {
-                    setCompanyValue(sessionCompanyId);
-                    loadParentCompanies(sessionCompanyId);
-                } else {
+                if (isSuperadmin) {
                     setCompanyValue('');
                     let ts = getParentTomSelect();
                     if (ts) {
@@ -133,16 +148,19 @@ include BASE_PATH . '/include/footer.php';
                     } else {
                         $('.parent_id').html('<option value="">Select a Parent Company</option>');
                     }
+                } else if (sessionCompanyId) {
+                    setCompanyValue(sessionCompanyId);
+                    loadParentCompanies(sessionCompanyId);
                 }
             },
             onEditPopulate: function(rec) {
-                let companyToSet = rec.company_id || sessionCompanyId;
+                let companyToSet = isSuperadmin ? (rec.company_id || '') : sessionCompanyId;
                 setCompanyValue(companyToSet);
                 loadParentCompanies(companyToSet, rec.parent_id);
             }
         });
 
-        $(document).on('change', '.company_id', function() {
+        $(document).on('change', '.company_id, #select-company-role', function() {
             let companyId = $(this).val();
             loadParentCompanies(companyId);
         });

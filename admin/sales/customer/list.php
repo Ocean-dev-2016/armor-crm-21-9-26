@@ -158,9 +158,14 @@ $(document).ready(function() {
         }
     }
 
-    // Always reload DataTable when add followup modal is closed/dismissed
+    // Always reload DataTable & Refresh Notifications when add followup modal is closed/dismissed
     $('#addCustomerListFollowupModal').on('hidden.bs.modal', function () {
         reloadDataTableSafe();
+        if (typeof refreshFollowupNotifications === 'function') {
+            refreshFollowupNotifications();
+        } else if (window.refreshFollowupNotifications) {
+            window.refreshFollowupNotifications();
+        }
     });
 
     let tomClfReason = null;
@@ -259,6 +264,14 @@ $(document).ready(function() {
                 if (res.status === true) {
                     if (typeof showToast === 'function') showToast(res.message, 'success');
                     else alert(res.message);
+                    
+                    // Immediately refresh notifications in header
+                    if (typeof refreshFollowupNotifications === 'function') {
+                        refreshFollowupNotifications();
+                    } else if (window.refreshFollowupNotifications) {
+                        window.refreshFollowupNotifications();
+                    }
+
                     $('#addCustomerListFollowupModal').modal('hide');
                 } else {
                     if (typeof showToast === 'function') showToast(res.message, 'error');

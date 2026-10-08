@@ -28,7 +28,7 @@ if ($leadId > 0) {
 
 // Active follow-up types & statuses for modal dropdowns
 $leadFollowupTypes = db_rows("SELECT id, name FROM lead_followup_type WHERE status = 1 ORDER BY id ASC");
-$leadStatuses = db_rows("SELECT id, name, color FROM lead_status WHERE status = 1 ORDER BY id ASC");
+$leadStatuses = db_rows("SELECT id, name, color FROM lead_status WHERE status = 1 ORDER BY order_by ASC");
 
 $pageNm = 'Lead Follow-up History';
 $breadcrumbType = 'form';
@@ -80,6 +80,7 @@ if ($leadId > 0) {
         'Follow-up Date & Time',
         'Lead Status',
         'Discussion Remarks',
+        'Response',
         'Followup Status',
         'Recorded By',
         'Created Date',
@@ -93,6 +94,7 @@ if ($leadId > 0) {
         'Follow-up Date & Time',
         'Lead Status',
         'Discussion Remarks',
+        'Response',
         'Followup Status',
         'Recorded By',
         'Created Date',
@@ -201,13 +203,13 @@ include BASE_PATH . '/component/datatable.php';
 
                     <!-- Response Input -->
                     <div class="mb-3">
-                        <label class="form-label fs-13 fw-semibold">Response <span class="text-danger">*</span></label>
+                        <label class="form-label fs-13 fw-semibold">Response</label>
                         <textarea class="form-control" name="response" id="respResponseText" rows="3" placeholder="Response" required></textarea>
                     </div>
 
                     <!-- Follow-up Action Select -->
                     <div class="mb-3">
-                        <label class="form-label fs-13 fw-semibold">Follow-up Action <span class="text-danger">*</span></label>
+                        <label class="form-label fs-13 fw-semibold">Follow-up Action</label>
                         <select class="form-select" name="followup_action" id="respFollowupAction" required>
                             <option value="">Follow-up Action</option>
                             <option value="next-followup">next-follow up</option>
@@ -222,11 +224,11 @@ include BASE_PATH . '/component/datatable.php';
                         </h6>
                         <div class="row g-2 mb-2">
                             <div class="col-md-6">
-                                <label class="form-label fs-12 fw-semibold">Next Follow-up Date & Time <span class="text-danger">*</span></label>
+                                <label class="form-label fs-12 fw-semibold">Next Follow-up Date & Time</label>
                                 <input type="text" class="form-control form-control-sm" name="next_followup_date" id="respNextDateTime" placeholder="Select Date & Time">
                             </div>
                             <div class="col-md-6">
-                                <label class="form-label fs-12 fw-semibold">Follow-up Type <span class="text-danger">*</span></label>
+                                <label class="form-label fs-12 fw-semibold">Follow-up Type</label>
                                 <select class="form-select form-select-sm" name="next_followup_type" id="respNextType">
                                     <option value="">-- Select Type --</option>
                                     <?php foreach ($leadFollowupTypes as $fType): ?>
@@ -530,6 +532,48 @@ $(document).ready(function() {
             error: function() {
                 showToast('Server error while updating follow-up.', 'error');
                 $btn.prop('disabled', false);
+            }
+        });
+    });
+
+    // 8. Delete Follow-up Record
+    $(document).on('click', '.btn-delete-fu', function(e) {
+        e.preventDefault();
+        let fuId = $(this).data('id');
+        if (!fuId) return;
+
+        Swal.fire({
+            title: 'Are you sure?',
+            text: "Do you want to delete this follow-up record?",
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#ef4444',
+            cancelButtonColor: '#6b7280',
+            confirmButtonText: 'Yes, delete it!'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                $.ajax({
+                    url: SITE_URL + "admin/setting/lead/ajax.php",
+                    type: "POST",
+                    data: { action: 'delete_followup', followup_id: fuId },
+                    dataType: "json",
+                    success: function(res) {
+                        if (res.status === true) {
+                            showToast(res.message, 'success');
+                            if (typeof refreshFollowupNotifications === 'function') {
+                                refreshFollowupNotifications();
+                            }
+                            if ($.fn.DataTable && $('.data-table').length) {
+                                $('.data-table').DataTable().ajax.reload(null, false);
+                            }
+                        } else {
+                            showToast(res.message || 'Failed to delete follow-up', 'error');
+                        }
+                    },
+                    error: function() {
+                        showToast('Server error while deleting follow-up.', 'error');
+                    }
+                });
             }
         });
     });

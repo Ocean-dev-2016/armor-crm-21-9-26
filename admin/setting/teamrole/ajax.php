@@ -14,14 +14,26 @@ if (isset($_SESSION['company_id']) && (int)$_SESSION['company_id'] > 0) {
     $baseConditions[] = "r.company_id = " . (int)$_SESSION['company_id'] . " AND r.parent_id != 0";
 }
 
-$columns = [
-    0 => null,
-    1 => 'c.name',
-    2 => 'pr.name',
-    3 => 'r.name',
-    4 => 'r.status',
-    5 => null
-];
+$isSuperadmin = isset($_SESSION['user_type']) && $_SESSION['user_type'] === 'superadmin';
+
+if ($isSuperadmin) {
+    $columns = [
+        0 => null,
+        1 => 'c.name',
+        2 => 'pr.name',
+        3 => 'r.name',
+        4 => 'r.status',
+        5 => null
+    ];
+} else {
+    $columns = [
+        0 => null,
+        1 => 'pr.name',
+        2 => 'r.name',
+        3 => 'r.status',
+        4 => null
+    ];
+}
 
 $joins = "LEFT JOIN company AS c ON c.id = r.company_id 
           LEFT JOIN roles AS pr ON pr.id = r.parent_id 
@@ -38,7 +50,7 @@ handle_datatable([
     'order_columns'        => $columns,
     'default_order_column' => 'r.id',
     'default_order_dir'    => 'DESC',
-    'row_callback'         => function ($row, $srNo) use ($tbl, $canEdit, $canDelete) {
+    'row_callback'         => function ($row, $srNo) use ($tbl, $canEdit, $canDelete, $isSuperadmin) {
         $parentDisplay = ((int)($row['parent_id'] ?? 0) === 0) 
             ? ($row['created_by_username'] ?? '') 
             : ($row['parent_role_name'] ?? '');
@@ -50,19 +62,21 @@ handle_datatable([
             </a>
         </li>';
 
-        return [
-            $srNo,
-            htmlspecialchars($row['company_name'] ?? ''),
-            htmlspecialchars($parentDisplay),
-            htmlspecialchars($row['name'] ?? ''),
-            dt_status_switch($encId, $row['status'], $tbl, true),
-            dt_action_dropdown($encId, $tbl, [
-                'can_edit'     => $canEdit,
-                'can_delete'   => $canDelete,
-                'edit_class'   => 'team_role_edit',
-                'is_encrypted' => true,
-                'extra_items'  => $settingItem
-            ])
-        ];
+        $rowData = [$srNo];
+        if ($isSuperadmin) {
+            $rowData[] = htmlspecialchars($row['company_name'] ?? '');
+        }
+        $rowData[] = htmlspecialchars($parentDisplay);
+        $rowData[] = htmlspecialchars($row['name'] ?? '');
+        $rowData[] = dt_status_switch($encId, $row['status'], $tbl, true);
+        $rowData[] = dt_action_dropdown($encId, $tbl, [
+            'can_edit'     => $canEdit,
+            'can_delete'   => $canDelete,
+            'edit_class'   => 'team_role_edit',
+            'is_encrypted' => true,
+            'extra_items'  => $settingItem
+        ]);
+
+        return $rowData;
     }
 ]);

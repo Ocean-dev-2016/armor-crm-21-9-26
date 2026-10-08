@@ -103,7 +103,6 @@ $tableHeaders = [
 ];
 include BASE_PATH . '/component/datatable.php';
 ?>
-?>
 
 <!-- MODAL: Add Follow Up for Inquiry (Matches user's 2nd image exactly) -->
 <div class="modal fade" id="addCompanyFollowupModal" tabindex="-1" aria-labelledby="addCompanyFollowupModalLabel" aria-hidden="true">

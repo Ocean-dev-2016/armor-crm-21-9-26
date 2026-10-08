@@ -29,7 +29,7 @@ $lead = [
     'lead_source'        => 1,
     'lead_stage'         => 1,
     'assign_to'          => '',
-    'demo_date'          => '',
+    'demo_date'          => date('d-m-Y'),
     'requirements'       => '',
     'notes'              => '',
     'status'             => 1
@@ -50,7 +50,7 @@ if ($isEdit) {
 }
 $countries     = db_rows("SELECT id, name FROM country WHERE status = 1 ORDER BY name ASC");
 $leadSources   = db_rows("SELECT id, name FROM lead_source_of_inquiry WHERE status = 1 ORDER BY name ASC");
-$leadStatuses  = db_rows("SELECT id, name, color FROM lead_status WHERE status = 1 ORDER BY id ASC");
+$leadStatuses  = db_rows("SELECT id, name, color FROM lead_status WHERE status = 1 ORDER BY order_by ASC, id ASC");
 $leadEmployees = db_rows("SELECT id, name FROM lead_employee WHERE status = 1 ORDER BY name ASC");
 
 include BASE_PATH . '/include/header.php';
@@ -398,7 +398,8 @@ include BASE_PATH . '/include/footer.php';
         if ($("#demo_date").length && typeof flatpickr !== 'undefined') {
             flatpickr("#demo_date", {
                 dateFormat: "d-m-Y",
-                allowInput: true
+                allowInput: true,
+                defaultDate: $("#demo_date").val() || new Date()
             });
         }
 

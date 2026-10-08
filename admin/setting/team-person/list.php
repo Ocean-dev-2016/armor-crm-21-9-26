@@ -15,20 +15,21 @@ $tbl = 'users';
 include BASE_PATH . '/component/breadcrumb.php';
 ?>
 <?php
+$isSuperadmin = isset($_SESSION['user_type']) && $_SESSION['user_type'] === 'superadmin';
 $ajaxUrl = SITE_URL . 'admin/setting/team-person/ajax.php';
-$tableHeaders = [
-    'Sr No.',
-    'Company Name',
-    'Name',
-    'Email',
-    'Mobile No',
-    'Country',
-    'State',
-    'City',
-    'Role',
-    'Status',
-    'Actions'
-];
+$tableHeaders = ['Sr No.'];
+if ($isSuperadmin) {
+    $tableHeaders[] = 'Company Name';
+}
+$tableHeaders[] = 'Name';
+$tableHeaders[] = 'Email';
+$tableHeaders[] = 'Mobile No';
+$tableHeaders[] = 'Country';
+$tableHeaders[] = 'State';
+$tableHeaders[] = 'City';
+$tableHeaders[] = 'Role';
+$tableHeaders[] = 'Status';
+$tableHeaders[] = 'Actions';
 include BASE_PATH . '/component/datatable.php';
 ?>
 

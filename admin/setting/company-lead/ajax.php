@@ -168,6 +168,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             }
         }
 
+        // If standard user, verify this lead is assigned to them
+        $userType = $_SESSION['user_type'] ?? '';
+        if ($userType === 'user' && (int)($lead['assigned_to'] ?? 0) !== $userId) {
+            echo json_encode(['status' => false, 'message' => 'You can only update status for leads assigned to you.']);
+            exit;
+        }
+
         // Resolve status ID & Name
         $statusId = 0;
         $statusName = $newStatus;
@@ -498,7 +505,7 @@ handle_datatable([
     'order_columns'        => $columns,
     'default_order_column' => 'cl.id',
     'default_order_dir'    => 'DESC',
-    'row_callback'         => function ($row, $srNo) use ($tbl, $canEdit, $canDelete, $allStatuses, $isSuperadmin) {
+    'row_callback'         => function ($row, $srNo) use ($tbl, $canEdit, $canDelete, $allStatuses, $isSuperadmin, $userType, $userId) {
         $encId = encrypt_id($row['id']);
         $inqDateFormatted = !empty($row['inquiry_date']) ? date('d-m-Y', strtotime($row['inquiry_date'])) : '-';
 
@@ -520,12 +527,14 @@ handle_datatable([
         }
 
         $hasCustomer = !empty($row['customer_id']) && (int)$row['customer_id'] > 0;
-        
+        $isAssignedToCurrentUser = ($userType === 'user' && (int)($row['assigned_to'] ?? 0) === $userId);
+        $canChangeStatus = ($canEdit || $isAssignedToCurrentUser);
+
         // If customer already created for this lead, show static badge/label 'Converted' instead of dropdown
         if ($hasCustomer) {
             $convertedColor = !empty($row['lead_color']) ? htmlspecialchars($row['lead_color']) : '#0e5a6c';
             $leadBadge = '<span class="badge border" style="background-color: ' . $convertedColor . '1a; color: ' . $convertedColor . '; border-color: ' . $convertedColor . '40 !important; font-size: 12px; padding: 5px 12px; border-radius: 20px;">' . htmlspecialchars($leadStatusText ?: 'Converted') . '</span>';
-        } elseif ($canEdit) {
+        } elseif ($canChangeStatus) {
             $leadBadge = '
             <div class="d-inline-block position-relative" style="min-width: 130px;">
                 <select class="form-select form-select-sm fw-semibold shadow-none lead-status-select" 

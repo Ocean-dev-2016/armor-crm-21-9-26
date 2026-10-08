@@ -55,6 +55,16 @@ function showToast(message, type = 'success') {
     });
 
     bsToast.show();
+
+    // If toast message is about follow-up or reminder, trigger notifications refresh immediately
+    if (message) {
+        const msgLower = String(message).toLowerCase();
+        if (msgLower.includes('follow') || msgLower.includes('reminder') || msgLower.includes('response')) {
+            if (typeof refreshFollowupNotifications === 'function') {
+                refreshFollowupNotifications();
+            }
+        }
+    }
 }
 
 /**
@@ -62,43 +72,53 @@ function showToast(message, type = 'success') {
  */
 function refreshFollowupNotifications(callback) {
     const siteUrl = (typeof SITE_URL !== 'undefined') ? SITE_URL : '/';
-    const ajaxUrl = siteUrl + 'include/notifications-ajax.php';
+    const ajaxUrl = siteUrl + 'include/notifications-ajax.php?_t=' + new Date().getTime();
+
+    function applyNotificationData(res) {
+        if (!res) return;
+        if (typeof res === 'string') {
+            try { res = JSON.parse(res); } catch (e) { return; }
+        }
+        if (res && res.status) {
+            const badge = document.getElementById('headerNotifBadge');
+            const pendingBadge = document.getElementById('headerNotifPendingBadge');
+            const listContainer = document.getElementById('headerNotifList');
+
+            if (badge) {
+                const total = parseInt(res.total_pending) || 0;
+                if (total > 0) {
+                    badge.textContent = res.badge_text || total;
+                    badge.classList.remove('d-none');
+                } else {
+                    badge.textContent = '0';
+                    badge.classList.add('d-none');
+                }
+            }
+
+            if (pendingBadge) {
+                pendingBadge.textContent = res.pending_label || (res.total_pending + ' Pending');
+            }
+
+            if (listContainer && res.html !== undefined) {
+                listContainer.innerHTML = res.html;
+                if (typeof lucide !== 'undefined' && lucide.createIcons) {
+                    lucide.createIcons();
+                }
+            }
+        }
+        if (typeof callback === 'function') {
+            callback(res);
+        }
+    }
 
     if (typeof jQuery !== 'undefined') {
         jQuery.ajax({
             url: ajaxUrl,
             type: 'GET',
             dataType: 'json',
+            cache: false,
             success: function (res) {
-                if (res && res.status) {
-                    const badge = document.getElementById('headerNotifBadge');
-                    const pendingBadge = document.getElementById('headerNotifPendingBadge');
-                    const listContainer = document.getElementById('headerNotifList');
-
-                    if (badge) {
-                        if (res.total_pending > 0) {
-                            badge.textContent = res.badge_text || res.total_pending;
-                            badge.classList.remove('d-none');
-                        } else {
-                            badge.textContent = '0';
-                            badge.classList.add('d-none');
-                        }
-                    }
-
-                    if (pendingBadge) {
-                        pendingBadge.textContent = res.pending_label || (res.total_pending + ' Pending');
-                    }
-
-                    if (listContainer && res.html !== undefined) {
-                        listContainer.innerHTML = res.html;
-                        if (typeof lucide !== 'undefined') {
-                            lucide.createIcons();
-                        }
-                    }
-                }
-                if (typeof callback === 'function') {
-                    callback(res);
-                }
+                applyNotificationData(res);
             },
             error: function () {
                 if (typeof callback === 'function') {
@@ -107,38 +127,10 @@ function refreshFollowupNotifications(callback) {
             }
         });
     } else {
-        fetch(ajaxUrl)
+        fetch(ajaxUrl, { cache: 'no-cache' })
             .then(response => response.json())
             .then(res => {
-                if (res && res.status) {
-                    const badge = document.getElementById('headerNotifBadge');
-                    const pendingBadge = document.getElementById('headerNotifPendingBadge');
-                    const listContainer = document.getElementById('headerNotifList');
-
-                    if (badge) {
-                        if (res.total_pending > 0) {
-                            badge.textContent = res.badge_text || res.total_pending;
-                            badge.classList.remove('d-none');
-                        } else {
-                            badge.textContent = '0';
-                            badge.classList.add('d-none');
-                        }
-                    }
-
-                    if (pendingBadge) {
-                        pendingBadge.textContent = res.pending_label || (res.total_pending + ' Pending');
-                    }
-
-                    if (listContainer && res.html !== undefined) {
-                        listContainer.innerHTML = res.html;
-                        if (typeof lucide !== 'undefined') {
-                            lucide.createIcons();
-                        }
-                    }
-                }
-                if (typeof callback === 'function') {
-                    callback(res);
-                }
+                applyNotificationData(res);
             })
             .catch(() => {
                 if (typeof callback === 'function') {
@@ -146,6 +138,56 @@ function refreshFollowupNotifications(callback) {
                 }
             });
     }
+}
+
+// Make refreshFollowupNotifications accessible globally
+window.refreshFollowupNotifications = refreshFollowupNotifications;
+
+// Automatically refresh header notifications whenever any follow-up AJAX request completes successfully
+if (typeof jQuery !== 'undefined') {
+    jQuery(document).ajaxSuccess(function (event, xhr, settings) {
+        if (!settings || !settings.url) return;
+        const url = settings.url.toLowerCase();
+        if (url.includes('notifications-ajax.php')) return;
+
+        // Check if URL relates to follow-up operations
+        const isFollowupUrl = url.includes('followup') || 
+                              url.includes('customer-followup') || 
+                              url.includes('company-lead') || 
+                              url.includes('lead') || 
+                              url.includes('customer');
+
+        let dataStr = '';
+        if (typeof settings.data === 'string') {
+            dataStr = settings.data.toLowerCase();
+        } else if (settings.data && typeof settings.data === 'object') {
+            try {
+                dataStr = JSON.stringify(settings.data).toLowerCase();
+            } catch (e) {
+                dataStr = '';
+            }
+        }
+
+        const isFollowupAction = dataStr.includes('followup') || 
+                                 dataStr.includes('response') || 
+                                 dataStr.includes('reminder') ||
+                                 dataStr.includes('fu_') ||
+                                 dataStr.includes('lead_id') ||
+                                 dataStr.includes('customer_id');
+
+        // Also check response if it contains followup indicators or success status from followup endpoints
+        let resLooksLikeFollowup = false;
+        if (xhr && xhr.responseText) {
+            const respLower = xhr.responseText.toLowerCase();
+            if (respLower.includes('follow') || respLower.includes('reminder') || respLower.includes('response')) {
+                resLooksLikeFollowup = true;
+            }
+        }
+
+        if (isFollowupUrl || isFollowupAction || resLooksLikeFollowup) {
+            refreshFollowupNotifications();
+        }
+    });
 }
 
 /**
@@ -345,10 +387,10 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
-    // 5. Periodic background refresh (every 30 seconds)
+    // 5. Periodic background refresh (every 10 seconds for live updates without reload)
     setInterval(function () {
         refreshFollowupNotifications();
-    }, 30000);
+    }, 10000);
 });
 
 /**

@@ -5,7 +5,7 @@
 function initAdvancedForms() {
   // Initialize Tom Select
   const selectSingle = document.getElementById('select-single');
-  if (selectSingle) {
+  if (selectSingle && selectSingle.tagName === 'SELECT') {
     new TomSelect(selectSingle, {
       create: true,
       sortField: {

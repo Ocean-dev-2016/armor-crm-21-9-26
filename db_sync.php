@@ -266,6 +266,12 @@ if (!tableExists('lead_followups')) {
 } else {
     echo '<div class="log-item log-info">ℹ `lead_followups` table exists.</div>';
 }
+
+if (tableExists('lead_followups')) {
+    if (!columnExists('lead_followups', 'response')) {
+        mysqli_query($conn, "ALTER TABLE `lead_followups` ADD COLUMN `response` TEXT NULL DEFAULT NULL AFTER `remarks`");
+    }
+}
 // 7b. Check & Create `lead_followup_type` table & default entries
 if (!tableExists('lead_followup_type')) {
     $createLeadFuTypeSql = "CREATE TABLE IF NOT EXISTS `lead_followup_type` (
@@ -1064,6 +1070,22 @@ if (tableExists('customer')) {
         }
     } else {
         echo '<div class="log-item log-info">ℹ `customer`.`assigned_to` column already exists.</div>';
+    }
+}
+
+// Check & Add order_by column to lead_status table
+if (tableExists('lead_status')) {
+    if (!columnExists('lead_status', 'order_by')) {
+        $q = mysqli_query($conn, "ALTER TABLE `lead_status` ADD COLUMN `order_by` INT(11) NOT NULL DEFAULT 0 AFTER `id`");
+        if ($q) {
+            // Initialize order_by with current id sequence
+            mysqli_query($conn, "UPDATE `lead_status` SET `order_by` = `id` WHERE `order_by` = 0");
+            echo '<div class="log-item log-success">✓ Added `order_by` column to `lead_status` table successfully.</div>';
+        } else {
+            echo '<div class="log-item log-error">✗ Failed to add `order_by` to `lead_status`: ' . mysqli_error($conn) . '</div>';
+        }
+    } else {
+        echo '<div class="log-item log-info">ℹ `lead_status`.`order_by` column already exists.</div>';
     }
 }
 

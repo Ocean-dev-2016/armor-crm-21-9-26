@@ -58,6 +58,7 @@ RewriteRule ^module/?$ admin/setting/module/list.php [L]
 # Platform Leads (Superadmin Only)
 RewriteRule ^lead/?$ admin/setting/lead/list.php [L,QSA]
 RewriteRule ^lead/add/?$ admin/setting/lead/form.php [L,QSA]
+RewriteRule ^lead/view/([^/]+)/?$ admin/setting/lead/view.php?id=$1 [L,QSA]
 RewriteRule ^lead/edit/([^/]+)/?$ admin/setting/lead/form.php?id=$1 [L,QSA]
 RewriteRule ^lead/followup-history/([^/]+)/?$ admin/setting/lead/followup-history.php?id=$1 [L,QSA]
 RewriteRule ^lead/followup-history/?$ admin/setting/lead/followup-history.php [L,QSA]

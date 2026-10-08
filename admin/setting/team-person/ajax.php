@@ -14,19 +14,36 @@ if (isset($_SESSION['company_id']) && (int)$_SESSION['company_id'] > 0) {
     $baseConditions[] = "u.company_id = " . (int)$_SESSION['company_id'];
 }
 
-$columns = [
-    0 => null,
-    1 => 'c.name',
-    2 => 'u.name',
-    3 => 'u.email',
-    4 => 'u.mobile_no',
-    5 => 'cr.name',
-    6 => 's.name',
-    7 => 'ci.name',
-    8 => 'r.name',
-    9 => 'u.status',
-    10 => null
-];
+$isSuperadmin = isset($_SESSION['user_type']) && $_SESSION['user_type'] === 'superadmin';
+
+if ($isSuperadmin) {
+    $columns = [
+        0 => null,
+        1 => 'c.name',
+        2 => 'u.name',
+        3 => 'u.email',
+        4 => 'u.mobile_no',
+        5 => 'cr.name',
+        6 => 's.name',
+        7 => 'ci.name',
+        8 => 'r.name',
+        9 => 'u.status',
+        10 => null
+    ];
+} else {
+    $columns = [
+        0 => null,
+        1 => 'u.name',
+        2 => 'u.email',
+        3 => 'u.mobile_no',
+        4 => 'cr.name',
+        5 => 's.name',
+        6 => 'ci.name',
+        7 => 'r.name',
+        8 => 'u.status',
+        9 => null
+    ];
+}
 
 $joins = "LEFT JOIN company c ON c.id = u.company_id 
           LEFT JOIN roles r ON r.id = u.role_id 
@@ -45,26 +62,28 @@ handle_datatable([
     'order_columns'        => $columns,
     'default_order_column' => 'u.id',
     'default_order_dir'    => 'DESC',
-    'row_callback'         => function ($row, $srNo) use ($tbl, $canEdit, $canDelete) {
+    'row_callback'         => function ($row, $srNo) use ($tbl, $canEdit, $canDelete, $isSuperadmin) {
         $encId = encrypt_id($row['id']);
 
-        return [
-            $srNo,
-            htmlspecialchars($row['company_name'] ?? '-'),
-            htmlspecialchars($row['name'] ?? ''),
-            htmlspecialchars($row['email'] ?? ''),
-            htmlspecialchars($row['mobile_no'] ?? ''),
-            htmlspecialchars($row['country_name'] ?? '-'),
-            htmlspecialchars($row['state_name'] ?? '-'),
-            htmlspecialchars($row['city_name'] ?? '-'),
-            htmlspecialchars($row['role_name'] ?? '-'),
-            dt_status_switch($encId, $row['status'], $tbl, true),
-            dt_action_dropdown($encId, $tbl, [
-                'can_edit'     => $canEdit,
-                'can_delete'   => $canDelete,
-                'is_encrypted' => true,
-                'edit_url'     => SITE_URL . 'team-person/edit/' . $encId
-            ])
-        ];
+        $rowData = [$srNo];
+        if ($isSuperadmin) {
+            $rowData[] = htmlspecialchars($row['company_name'] ?? '-');
+        }
+        $rowData[] = htmlspecialchars($row['name'] ?? '');
+        $rowData[] = htmlspecialchars($row['email'] ?? '');
+        $rowData[] = htmlspecialchars($row['mobile_no'] ?? '');
+        $rowData[] = htmlspecialchars($row['country_name'] ?? '-');
+        $rowData[] = htmlspecialchars($row['state_name'] ?? '-');
+        $rowData[] = htmlspecialchars($row['city_name'] ?? '-');
+        $rowData[] = htmlspecialchars($row['role_name'] ?? '-');
+        $rowData[] = dt_status_switch($encId, $row['status'], $tbl, true);
+        $rowData[] = dt_action_dropdown($encId, $tbl, [
+            'can_edit'     => $canEdit,
+            'can_delete'   => $canDelete,
+            'is_encrypted' => true,
+            'edit_url'     => SITE_URL . 'team-person/edit/' . $encId
+        ]);
+
+        return $rowData;
     }
 ]);

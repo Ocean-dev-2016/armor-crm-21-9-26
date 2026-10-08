@@ -40,7 +40,7 @@ include BASE_PATH . '/component/datatable.php';
 // Active plans for convert modal dropdown
 $activePlans = db_rows("SELECT id, name, price, days FROM plan WHERE status = 1 ORDER BY days ASC, price ASC");
 // Active lead statuses from lead_status table
-$leadStatuses = db_rows("SELECT id, name, color FROM lead_status WHERE status = 1 ORDER BY id ASC");
+$leadStatuses = db_rows("SELECT id, name, color FROM lead_status WHERE status = 1 ORDER BY order_by ASC");
 // Active followup types from lead_followup_type table
 $leadFollowupTypes = db_rows("SELECT id, name FROM lead_followup_type WHERE status = 1 ORDER BY id ASC");
 ?>
@@ -624,6 +624,10 @@ $(document).ready(function() {
                     let fuModalInstance = bootstrap.Modal.getInstance(document.getElementById('leadFollowupModal'));
                     if (fuModalInstance) fuModalInstance.hide();
 
+                    if (typeof refreshFollowupNotifications === 'function') {
+                        refreshFollowupNotifications();
+                    }
+
                     if ($.fn.DataTable && $('.data-table').length) {
                         $('.data-table').DataTable().ajax.reload(null, false);
                     }
@@ -655,6 +659,9 @@ $(document).ready(function() {
             success: function(res) {
                 if (res.status === true) {
                     showToast(res.message, 'success');
+                    if (typeof refreshFollowupNotifications === 'function') {
+                        refreshFollowupNotifications();
+                    }
                     loadFollowupList(leadId);
                 } else {
                     showToast(res.message || 'Error updating status', 'error');

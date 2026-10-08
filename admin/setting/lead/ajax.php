@@ -302,19 +302,12 @@ if (isset($_POST['action']) && $_POST['action'] === 'submit_followup_response') 
 
     $leadId = (int)$currFu['lead_id'];
 
-    // 1. Mark current follow-up completed and append response notes
+    // 1. Mark current follow-up completed and store response strictly in response column
     $respEscaped = db_escape($responseRemarks);
-    $mergedRemarks = $currFu['remarks'];
-    if (!empty($mergedRemarks)) {
-        $mergedRemarks .= "\n[Response]: " . $responseRemarks;
-    } else {
-        $mergedRemarks = $responseRemarks;
-    }
-    $mergedRemarksEscaped = db_escape($mergedRemarks);
 
     $updCurrent = db_query("UPDATE lead_followups SET 
         `reminder_status` = 'completed',
-        `remarks` = '$mergedRemarksEscaped',
+        `response` = '$respEscaped',
         `updated_at` = NOW()
         WHERE `id` = $followupId");
 
@@ -373,6 +366,30 @@ if (isset($_POST['action']) && $_POST['action'] === 'submit_followup_response') 
 
     $msg = ($fuAction === 'next-followup') ? 'Response saved and Next Follow-up scheduled successfully!' : 'Follow-up ended and response saved successfully!';
     echo json_encode(['status' => true, 'message' => $msg]);
+    exit;
+}
+
+// Handle: Delete Follow-up Record
+if (isset($_POST['action']) && $_POST['action'] === 'delete_followup') {
+    header('Content-Type: application/json');
+    $fuId = (int)($_POST['followup_id'] ?? 0);
+    if ($fuId <= 0) {
+        echo json_encode(['status' => false, 'message' => 'Invalid follow-up ID.']);
+        exit;
+    }
+
+    $fu = db_row("SELECT * FROM lead_followups WHERE id = $fuId LIMIT 1");
+    if (!$fu) {
+        echo json_encode(['status' => false, 'message' => 'Follow-up not found.']);
+        exit;
+    }
+
+    $del = db_query("DELETE FROM lead_followups WHERE id = $fuId");
+    if ($del) {
+        echo json_encode(['status' => true, 'message' => 'Follow-up deleted successfully!']);
+    } else {
+        echo json_encode(['status' => false, 'message' => 'Failed to delete follow-up.']);
+    }
     exit;
 }
 
@@ -568,7 +585,9 @@ if (isset($_POST['action']) && $_POST['action'] === 'convert_to_company') {
     db_query($insertSubSql);
 
     // 8. Update Lead to Converted & link converted company ID
-    db_query("UPDATE lead SET `lead_stage` = 'converted', `converted_company_id` = $newCompanyId, `updated_by` = $userId, `updated_at` = NOW() WHERE `id` = $leadId");
+    $convStatusRow = db_row("SELECT id FROM lead_status WHERE LOWER(name) = 'converted' LIMIT 1");
+    $convStageVal = $convStatusRow ? (string)$convStatusRow['id'] : 'converted';
+    db_query("UPDATE lead SET `lead_stage` = '$convStageVal', `converted_company_id` = $newCompanyId, `updated_by` = $userId, `updated_at` = NOW() WHERE `id` = $leadId");
 
     // Construct direct share message for Superadmin (WhatsApp / Copy) without email sending
     $waText = urlencode("Hello $personName,\n\nWelcome to our platform! Your workspace for *$companyName* is ready.\n\nLogin URL: " . SITE_URL . "\nEmail: $email\nPassword: $passwordRaw\n\nPlan: " . ($plan['name'] ?? '') . " (Valid for $planDays days).\n\nThank you!");
@@ -590,7 +609,7 @@ if (isset($_POST['action']) && $_POST['action'] === 'convert_to_company') {
     exit;
 }
 
-$allLeadStatuses = db_rows("SELECT id, name, color FROM lead_status WHERE status = 1 ORDER BY id ASC");
+$allLeadStatuses = db_rows("SELECT id, name, color FROM lead_status WHERE status = 1 ORDER BY order_by ASC");
 
 handle_datatable([
     'table'                => $tbl,
@@ -613,30 +632,40 @@ handle_datatable([
         $svgColorEsc = str_replace('#', '%23', $stageColor);
         $chevronSvg = "url(\"data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='{$svgColorEsc}' stroke-linecap='round' stroke-linejoin='round' stroke-width='2.2' d='m2 5 6 6 6-6'/%3e%3c/svg%3e\")";
 
-        // Build premium pill badge select for Lead Status
-        $stageDropdown = "<div class='lead-status-select-wrap'>";
-        $stageDropdown .= "<select class='lead-status-badge-select lead-stage-inline-select' 
-                            data-id='{$row['id']}' 
-                            data-current='" . htmlspecialchars($stageVal, ENT_QUOTES) . "' 
-                            style=\"color: {$stageColor}; background-color: {$stageColor}1F; border-color: {$stageColor}4D; background-image: {$chevronSvg};\">";
+        // If company has actually been created for this lead, display static 'Converted' badge/label (no dropdown)
+        $hasConvertedCompany = !empty($row['converted_company_id']) && (int)$row['converted_company_id'] > 0;
+        if ($hasConvertedCompany) {
+            $stageDropdown = "<div class='lead-status-select-wrap'>
+                <span class='badge' style='background-color: {$stageColor}1F; color: {$stageColor}; border: 1.5px solid {$stageColor}60; border-radius: 20px; font-size: 12px; padding: 5px 14px; font-weight: 600;'>
+                    <i data-lucide='check-circle-2' class='fs-12 align-middle me-1'></i> " . htmlspecialchars(get_lead_stage_label($stageVal) ?: 'Converted') . "
+                </span>
+            </div>";
+        } else {
+            // Build premium pill badge select for Lead Status
+            $stageDropdown = "<div class='lead-status-select-wrap'>";
+            $stageDropdown .= "<select class='lead-status-badge-select lead-stage-inline-select' 
+                                data-id='{$row['id']}' 
+                                data-current='" . htmlspecialchars($stageVal, ENT_QUOTES) . "' 
+                                style=\"color: {$stageColor}; background-color: {$stageColor}1F; border-color: {$stageColor}4D; background-image: {$chevronSvg};\">";
 
-        $matched = false;
-        foreach ($allLeadStatuses as $st) {
-            $isSel = ((string)$stageVal === (string)$st['id'] || strtolower((string)$stageVal) === strtolower($st['name']));
-            if ($isSel) $matched = true;
-            $selAttr = $isSel ? 'selected' : '';
-            $stColor = !empty($st['color']) ? $st['color'] : '#4f46e5';
-            $stageDropdown .= "<option value='{$st['id']}' data-color='{$stColor}' {$selAttr}>";
-            $stageDropdown .= htmlspecialchars($st['name']);
-            $stageDropdown .= "</option>";
-        }
+            $matched = false;
+            foreach ($allLeadStatuses as $st) {
+                $isSel = ((string)$stageVal === (string)$st['id'] || strtolower((string)$stageVal) === strtolower($st['name']));
+                if ($isSel) $matched = true;
+                $selAttr = $isSel ? 'selected' : '';
+                $stColor = !empty($st['color']) ? $st['color'] : '#4f46e5';
+                $stageDropdown .= "<option value='{$st['id']}' data-color='{$stColor}' {$selAttr}>";
+                $stageDropdown .= htmlspecialchars($st['name']);
+                $stageDropdown .= "</option>";
+            }
 
-        // If current value is not in active statuses (e.g. legacy string), display as custom selected option
-        if (!$matched && !empty($stageVal)) {
-            $stageText = get_lead_stage_label($stageVal);
-            $stageDropdown .= "<option value='" . htmlspecialchars($stageVal, ENT_QUOTES) . "' data-color='{$stageColor}' selected>" . htmlspecialchars($stageText) . "</option>";
+            // If current value is not in active statuses (e.g. legacy string), display as custom selected option
+            if (!$matched && !empty($stageVal)) {
+                $stageText = get_lead_stage_label($stageVal);
+                $stageDropdown .= "<option value='" . htmlspecialchars($stageVal, ENT_QUOTES) . "' data-color='{$stageColor}' selected>" . htmlspecialchars($stageText) . "</option>";
+            }
+            $stageDropdown .= "</select></div>";
         }
-        $stageDropdown .= "</select></div>";
 
         // Plan Name
         $planName = '-';
@@ -650,24 +679,30 @@ handle_datatable([
         // Custom action dropdown items
         $extraItems = [];
 
-        // Follow-up & Reminders options
-        if ($stageSlug !== 'converted') {
+        // View option (available for all leads, matching company lead)
+        $extraItems[] = '<li>
+            <a class="dropdown-item text-secondary fw-medium" href="' . SITE_URL . 'lead/view/' . $encId . '">
+               <i data-lucide="eye" class="fs-14 align-middle me-1"></i> View
+            </a>
+        </li>';
+
+        if (!$hasConvertedCompany) {
+            // Options before company is created:
+            // 1. Add Follow-up & Reminder
             $extraItems[] = '<li>
                 <a class="dropdown-item text-primary fw-medium btn-followup-lead-action" href="javascript:void(0);" data-id="' . $row['id'] . '" data-name="' . htmlspecialchars($row['business_name'], ENT_QUOTES) . '" data-stage="' . htmlspecialchars($stageVal, ENT_QUOTES) . '">
                    <i data-lucide="plus-circle" class="fs-14 align-middle me-1"></i> Add Follow-up & Reminder
                 </a>
             </li>';
-        }
 
-        // Dedicated Follow-up History Page option
-        $extraItems[] = '<li>
-            <a class="dropdown-item text-secondary fw-medium" href="' . SITE_URL . 'lead/followup-history/' . $encId . '">
-               <i data-lucide="history" class="fs-14 align-middle me-1 text-info"></i> Follow-up History
-            </a>
-        </li>';
+            // 2. Follow-up History
+            $extraItems[] = '<li>
+                <a class="dropdown-item text-secondary fw-medium" href="' . SITE_URL . 'lead/followup-history/' . $encId . '">
+                   <i data-lucide="history" class="fs-14 align-middle me-1 text-info"></i> Follow-up History
+                </a>
+            </li>';
 
-        // Convert to Company option (if not yet converted)
-        if ($stageSlug !== 'converted') {
+            // 3. Convert to Company
             $extraItems[] = '<li>
                 <a class="dropdown-item text-success fw-semibold btn-convert-lead-action" href="javascript:void(0);" 
                    data-id="' . (int)$row['id'] . '" 
@@ -680,9 +715,10 @@ handle_datatable([
                 </a>
             </li>';
         } else {
+            // When company is already created: View and Follow-up History (and Delete via dt_action_dropdown)
             $extraItems[] = '<li>
-                <a class="dropdown-item text-success" href="' . SITE_URL . 'company">
-                   <i data-lucide="building" class="fs-14 align-middle me-1"></i> View in Companies
+                <a class="dropdown-item text-secondary fw-medium" href="' . SITE_URL . 'lead/followup-history/' . $encId . '">
+                   <i data-lucide="history" class="fs-14 align-middle me-1 text-info"></i> Follow-up History
                 </a>
             </li>';
         }
@@ -702,7 +738,7 @@ handle_datatable([
             $demoDateFormatted,
             $stageDropdown,
             dt_action_dropdown($encId, $tbl, [
-                'can_edit'     => true,
+                'can_edit'     => !$hasConvertedCompany,
                 'can_delete'   => true,
                 'is_encrypted' => true,
                 'edit_url'     => SITE_URL . 'lead/edit/' . $encId,

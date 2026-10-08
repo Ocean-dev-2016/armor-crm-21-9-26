@@ -30,10 +30,11 @@ if ($leadId > 0) {
         2 => 'f.followup_date',
         3 => 'f.stage',
         4 => 'f.remarks',
-        5 => 'f.reminder_status',
-        6 => 'f.created_by',
-        7 => 'f.created_at',
-        8 => null
+        5 => 'f.response',
+        6 => 'f.reminder_status',
+        7 => 'f.created_by',
+        8 => 'f.created_at',
+        9 => null
     ];
 } else {
     $columns = [
@@ -43,10 +44,11 @@ if ($leadId > 0) {
         3 => 'f.followup_date',
         4 => 'f.stage',
         5 => 'f.remarks',
-        6 => 'f.reminder_status',
-        7 => 'f.created_by',
-        8 => 'f.created_at',
-        9 => null
+        6 => 'f.response',
+        7 => 'f.reminder_status',
+        8 => 'f.created_by',
+        9 => 'f.created_at',
+        10 => null
     ];
 }
 
@@ -54,7 +56,7 @@ handle_datatable([
     'table'                => 'lead_followups f',
     'joins'                => 'LEFT JOIN lead l ON l.id = f.lead_id',
     'select'               => 'f.*, l.business_name, l.contact_name, l.mobile_no, l.whatsapp_no, l.lead_number, l.lead_stage, l.created_at AS lead_created_at',
-    'search_columns'       => ['f.remarks', 'f.stage', 'f.followup_type', 'l.business_name', 'l.contact_name', 'l.mobile_no'],
+    'search_columns'       => ['f.remarks', 'f.response', 'f.stage', 'f.followup_type', 'l.business_name', 'l.contact_name', 'l.mobile_no'],
     'order_columns'        => $columns,
     'default_order_column' => 'f.followup_date',
     'default_order_dir'    => 'DESC',
@@ -102,7 +104,7 @@ handle_datatable([
             }
         }
 
-        // Action buttons: Edit (only if pending) & Response (Check mark)
+        // Action buttons: Edit (only if pending), Response (Check mark if pending), and Delete
         $actionsHtml = '<div class="d-flex align-items-center justify-content-center gap-1">';
         if ($row['reminder_status'] === 'pending') {
             $actionsHtml .= '<button type="button" class="btn btn-outline-primary btn-sm btn-icon btn-edit-fu" data-id="' . $row['id'] . '" title="Edit Follow-up"><i data-lucide="edit" class="fs-14"></i></button>';
@@ -125,12 +127,18 @@ handle_datatable([
                 'data-whatsapp="' . $whatsappNo . '" ' .
                 'data-stage="' . $leadStage . '" ' .
                 'title="Add Followup Response"><i data-lucide="check" class="fs-14"></i></button>';
-        } else {
-            $actionsHtml .= '<span class="text-muted fs-12">-</span>';
         }
+
+        // Delete Follow-up button
+        $actionsHtml .= '<button type="button" class="btn btn-outline-danger btn-sm btn-icon btn-delete-fu" data-id="' . $row['id'] . '" title="Delete Follow-up"><i data-lucide="trash-2" class="fs-14"></i></button>';
+
         $actionsHtml .= '</div>';
 
-        $remarksHtml = '<div class="text-wrap" style="max-width: 320px; font-size: 13px;">' . nl2br(htmlspecialchars($row['remarks'] ?? '')) . '</div>';
+        // Only remarks data in remarks column
+        $remarksHtml = '<div class="text-wrap" style="max-width: 280px; font-size: 13px;">' . nl2br(htmlspecialchars($row['remarks'] ?? '')) . '</div>';
+
+        // Only response data in response column
+        $responseHtml = !empty($row['response']) ? '<div class="text-wrap text-success fw-medium" style="max-width: 280px; font-size: 13px;">' . nl2br(htmlspecialchars($row['response'])) . '</div>' : '<span class="text-muted fs-12">-</span>';
 
         // When leadId is not provided, show Lead information column
         if ($leadId <= 0) {
@@ -157,6 +165,7 @@ handle_datatable([
                 htmlspecialchars($dateFormatted),
                 $stageBadge,
                 $remarksHtml,
+                $responseHtml,
                 $statusBadge,
                 $userName,
                 htmlspecialchars($createdAtFormatted),
@@ -170,6 +179,7 @@ handle_datatable([
             htmlspecialchars($dateFormatted),
             $stageBadge,
             $remarksHtml,
+            $responseHtml,
             $statusBadge,
             $userName,
             htmlspecialchars($createdAtFormatted),

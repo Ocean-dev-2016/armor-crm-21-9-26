@@ -345,7 +345,7 @@ function get_lead_sources(): array
 
 function get_lead_statuses(): array
 {
-    $rows = db_rows("SELECT id, name, color FROM lead_status WHERE status = 1 ORDER BY id ASC");
+    $rows = db_rows("SELECT id, name, color FROM lead_status WHERE status = 1 ORDER BY order_by ASC");
     $list = [];
     if (!empty($rows)) {
         foreach ($rows as $r) {

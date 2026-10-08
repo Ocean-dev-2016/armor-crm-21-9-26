@@ -294,7 +294,7 @@ if (function_exists('db_rows')) {
 
         $notifTotalPending = count($companyPendingRows) + count($customerPendingRows);
     } else {
-        // Superadmin: Fetch pending followups from lead_followups
+        // Superadmin: Fetch pending followups from lead_followups (Superadmin Lead)
         $leadPendingRows = db_rows("SELECT f.*, 
                                            l.business_name, 
                                            l.contact_name, 
@@ -308,7 +308,7 @@ if (function_exists('db_rows')) {
                                     ORDER BY f.followup_date ASC");
 
         foreach ($leadPendingRows as $lfRow) {
-            $lfRow['source_type'] = 'lead';
+            $lfRow['source_type'] = 'superadmin_lead';
             $fDateRaw = (!empty($lfRow['followup_date']) && $lfRow['followup_date'] !== '0000-00-00 00:00:00') ? $lfRow['followup_date'] : '';
             $fTs = $fDateRaw ? strtotime($fDateRaw) : 0;
             $fDateOnly = $fTs ? date('Y-m-d', $fTs) : '';
@@ -336,6 +336,46 @@ if (function_exists('db_rows')) {
                 $lfRow['through_name'] = function_exists('get_lead_followup_type_label') ? get_lead_followup_type_label($lfRow['followup_type']) : ucfirst($lfRow['followup_type']);
             }
             $notifFollowups[] = $lfRow;
+        }
+
+        // Superadmin: Fetch pending followups from company_lead_followups (Company Leads)
+        $compLeadAdminRows = db_rows("SELECT clf.*, 
+                                             cl.customer_name, 
+                                             cl.contact_person, 
+                                             cl.mobile_no, 
+                                             cl.inquiry_no, 
+                                             lft.name as through_name,
+                                             c.name as company_name
+                                      FROM company_lead_followups clf 
+                                      LEFT JOIN company_lead cl ON cl.id = clf.lead_id 
+                                      LEFT JOIN lead_followup_type lft ON lft.id = clf.followup_type_id 
+                                      LEFT JOIN company c ON c.id = clf.company_id
+                                      WHERE (LOWER(TRIM(clf.followup_status)) IN ('pending', 'open', '3', '') OR clf.followup_status IS NULL)
+                                      ORDER BY clf.followup_date ASC");
+
+        foreach ($compLeadAdminRows as $cfRow) {
+            $cfRow['source_type'] = 'lead';
+            $fDateRaw = (!empty($cfRow['followup_date']) && $cfRow['followup_date'] !== '0000-00-00 00:00:00') ? $cfRow['followup_date'] : '';
+            $fTs = $fDateRaw ? strtotime($fDateRaw) : 0;
+            $fDateOnly = $fTs ? date('Y-m-d', $fTs) : '';
+
+            if (empty($fTs) || $fTs < $nowTs) {
+                $cfRow['timing_category'] = 'overdue';
+                $cfRow['timing_label'] = 'Overdue';
+                $cfRow['timing_badge'] = 'bg-danger-subtle text-danger border border-danger-subtle';
+                $notifOverdue[] = $cfRow;
+            } elseif ($fDateOnly === $todayDate) {
+                $cfRow['timing_category'] = 'today';
+                $cfRow['timing_label'] = 'Today';
+                $cfRow['timing_badge'] = 'bg-warning-subtle text-warning border border-warning-subtle';
+                $notifToday[] = $cfRow;
+            } else {
+                $cfRow['timing_category'] = 'upcoming';
+                $cfRow['timing_label'] = 'Upcoming';
+                $cfRow['timing_badge'] = 'bg-info-subtle text-info border border-info-subtle';
+                $notifUpcoming[] = $cfRow;
+            }
+            $notifFollowups[] = $cfRow;
         }
 
         // Superadmin: Customer Follow-ups
@@ -378,7 +418,7 @@ if (function_exists('db_rows')) {
             $notifFollowups[] = $cfRow;
         }
 
-        $notifTotalPending = count($leadPendingRows) + count($custAdminRows);
+        $notifTotalPending = count($leadPendingRows) + count($compLeadAdminRows) + count($custAdminRows);
     }
 }
 $todayFollowupCount = $notifTotalPending;
@@ -497,6 +537,7 @@ include BASE_PATH . '/include/css.php';
                     $dateText = $fDateRaw ? date('d M, h:i A', strtotime($fDateRaw)) : '-';
                     
                     $isCustomerType = (($tf['source_type'] ?? '') === 'customer');
+                    $isSuperadminLead = (($tf['source_type'] ?? '') === 'superadmin_lead');
                     $titleName = htmlspecialchars($tf['customer_name'] ?? ($tf['business_name'] ?? ($isCustomerType ? 'Customer' : 'Lead')));
                     $personName = htmlspecialchars($tf['contact_person'] ?? ($tf['contact_name'] ?? ($tf['mobile_no'] ?? '')));
                     $thName = htmlspecialchars($tf['through_name'] ?? 'Call');
@@ -505,10 +546,22 @@ include BASE_PATH . '/include/css.php';
 
                     if ($isCustomerType) {
                       $viewUrl = !empty($tf['customer_id']) ? (SITE_URL . 'customer-followup?customer_id=' . encrypt_id($tf['customer_id'])) : (SITE_URL . 'customer-followup');
-                    } elseif ($isSuperadmin) {
+                    } elseif ($isSuperadminLead) {
                       $viewUrl = !empty($tf['lead_id']) ? (SITE_URL . 'lead/followup-history/' . encrypt_id($tf['lead_id'])) : (SITE_URL . 'lead/followup-history');
                     } else {
                       $viewUrl = !empty($tf['lead_id']) ? (SITE_URL . 'company-lead/view/' . encrypt_id($tf['lead_id'])) : (SITE_URL . 'company-lead-followup');
+                    }
+
+                    // Badge text & class
+                    if ($isCustomerType) {
+                      $badgeText = 'Customer';
+                      $badgeClass = 'bg-success-subtle text-success border border-success-subtle';
+                    } elseif ($isSuperadminLead) {
+                      $badgeText = 'Superadmin Lead';
+                      $badgeClass = 'bg-primary-subtle text-primary border border-primary-subtle';
+                    } else {
+                      $badgeText = 'Lead';
+                      $badgeClass = 'bg-info-subtle text-info border border-info-subtle';
                     }
 
                     // Icon and background highlight based on category
@@ -525,8 +578,8 @@ include BASE_PATH . '/include/css.php';
                       <div class="flex-grow-1 overflow-hidden">
                         <div class="d-flex justify-content-between align-items-center mb-1 gap-1">
                           <div class="d-flex align-items-center gap-1 overflow-hidden">
-                            <span class="badge <?= $isCustomerType ? 'bg-success-subtle text-success border border-success-subtle' : 'bg-primary-subtle text-primary border border-primary-subtle' ?> fs-9 px-1 py-0.5 rounded">
-                              <?= $isCustomerType ? 'Customer' : 'Lead' ?>
+                            <span class="badge <?= $badgeClass ?> fs-9 px-1 py-0.5 rounded">
+                              <?= $badgeText ?>
                             </span>
                             <p class="mb-0 fw-bold text-dark fs-12 text-truncate" style="max-width: 135px;" title="<?= $titleName ?>">
                               <?= $titleName ?>

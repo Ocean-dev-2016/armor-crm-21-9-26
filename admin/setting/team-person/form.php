@@ -64,22 +64,27 @@ include BASE_PATH . '/component/breadcrumb.php';
                         <span id="planLimitMsg"></span>
                     </div>
                     <div class="row g-3">
-                        <div class="col-md-3">
-                            <div class="mb-3">
-                                <label class="form-label">Company</label>
-                                <select name="company_id" id="select-company" class="form-select company_id">
-                                    <option value="">Select a Company</option>
-                                    <?php 
-                                        $selectedCompanyId = !empty($user['company_id']) ? (int)$user['company_id'] : ((isset($_SESSION['company_id']) && (int)$_SESSION['company_id'] > 0) ? (int)$_SESSION['company_id'] : 0);
-                                        foreach ($companies as $c): 
-                                    ?>
-                                        <option value="<?= $c['id'] ?>" <?= ((int)$c['id'] === $selectedCompanyId) ? 'selected' : '' ?>>
-                                            <?= htmlspecialchars($c['name'] ?? '') ?>
-                                        </option>
-                                    <?php endforeach; ?>
-                                </select>
+                        <?php 
+                            $isSuperadmin = isset($_SESSION['user_type']) && $_SESSION['user_type'] === 'superadmin';
+                            $selectedCompanyId = !empty($user['company_id']) ? (int)$user['company_id'] : ((isset($_SESSION['company_id']) && (int)$_SESSION['company_id'] > 0) ? (int)$_SESSION['company_id'] : 0);
+                        ?>
+                        <?php if ($isSuperadmin): ?>
+                            <div class="col-md-3">
+                                <div class="mb-3">
+                                    <label class="form-label">Company</label>
+                                    <select name="company_id" id="select-company" class="form-select company_id">
+                                        <option value="">Select a Company</option>
+                                        <?php foreach ($companies as $c): ?>
+                                            <option value="<?= $c['id'] ?>" <?= ((int)$c['id'] === $selectedCompanyId) ? 'selected' : '' ?>>
+                                                <?= htmlspecialchars($c['name'] ?? '') ?>
+                                            </option>
+                                        <?php endforeach; ?>
+                                    </select>
+                                </div>
                             </div>
-                        </div>
+                        <?php else: ?>
+                            <input type="hidden" name="company_id" id="select-company" class="company_id" value="<?= (int)$selectedCompanyId ?>">
+                        <?php endif; ?>
                         <div class="col-md-3">
                             <div class="mb-3">
                                 <label class="form-label">Name</label>
@@ -212,7 +217,7 @@ include BASE_PATH . '/include/footer.php';
         let selectedRoleId = '<?= $user['role_id'] ?>';
         let selectedParentUserId = '<?= $user['parent_user'] ?>';
 
-        let tsCompany = getTomSelectInstance('#select-company', 'Select a Company');
+        let tsCompany = $('#select-company').is('select') ? getTomSelectInstance('#select-company', 'Select a Company') : null;
         let tsParentUser = getTomSelectInstance('#select-parent-user', 'Select Parent Team Person');
         let tsRole = getTomSelectInstance('#select-role', 'Select Role');
 
