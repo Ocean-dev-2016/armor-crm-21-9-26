@@ -326,8 +326,56 @@ $(document).ready(function() {
                     $('#followupFormModalLabel').text('Edit Follow-up');
                     $('#btnSaveFuText').html('<i data-lucide="check" class="fs-13 align-middle me-1"></i> Update Follow-up');
 
-                    if (d.followup_type) $('#modalFuType').val(d.followup_type);
-                    if (d.stage) $('#modalFuStage').val(d.stage);
+                    // Set Follow-up Type (match by id, resolved id, or option text/slug)
+                    let matchedType = false;
+                    let targetTypeId = d.followup_type_id || d.followup_type;
+                    if (targetTypeId) {
+                        $('#modalFuType').val(targetTypeId);
+                        if (String($('#modalFuType').val()) === String(targetTypeId)) {
+                            matchedType = true;
+                        }
+                    }
+                    if (!matchedType && (d.followup_type || d.followup_type_label)) {
+                        let searchTerms = [
+                            String(d.followup_type || '').toLowerCase().trim(),
+                            String(d.followup_type_label || '').toLowerCase().trim()
+                        ].filter(Boolean);
+
+                        $('#modalFuType option').each(function() {
+                            let optVal = String($(this).val()).toLowerCase().trim();
+                            let optText = String($(this).text()).toLowerCase().trim();
+                            for (let term of searchTerms) {
+                                if (optVal === term || optText === term || optText.indexOf(term) !== -1 || term.indexOf(optText) !== -1) {
+                                    $('#modalFuType').val($(this).val());
+                                    matchedType = true;
+                                    return false;
+                                }
+                            }
+                        });
+                    }
+
+                    // Set Lead Stage
+                    let matchedStage = false;
+                    let targetStageId = d.stage_id || d.stage;
+                    if (targetStageId) {
+                        $('#modalFuStage').val(targetStageId);
+                        if (String($('#modalFuStage').val()) === String(targetStageId)) {
+                            matchedStage = true;
+                        }
+                    }
+                    if (!matchedStage && d.stage) {
+                        let stgTerm = String(d.stage).toLowerCase().trim();
+                        $('#modalFuStage option').each(function() {
+                            let optVal = String($(this).val()).toLowerCase().trim();
+                            let optText = String($(this).text()).toLowerCase().trim();
+                            if (optVal === stgTerm || optText === stgTerm) {
+                                $('#modalFuStage').val($(this).val());
+                                matchedStage = true;
+                                return false;
+                            }
+                        });
+                    }
+
                     $('#modalFuRemarks').val(d.remarks || '');
 
                     if (fpInstance && d.formatted_date) {

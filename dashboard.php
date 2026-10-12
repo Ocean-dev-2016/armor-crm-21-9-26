@@ -17,6 +17,27 @@ if ($currentUserType === 'superadmin') {
 
 include 'include/header.php';
 ?>
+<?php if (!empty($subscriptionBreadcrumbAlert)): ?>
+<div class="alert alert-warning border border-warning-subtle shadow-sm rounded-3 py-2 px-3 mb-3 d-flex align-items-center justify-content-between" role="alert">
+    <div class="d-flex align-items-center gap-2">
+        <i data-lucide="alert-triangle" class="fs-18 text-warning flex-shrink-0"></i>
+        <div class="fs-13 fw-medium text-dark">
+            <?= htmlspecialchars($subscriptionBreadcrumbAlert['message']) ?>
+        </div>
+    </div>
+    <span class="badge bg-warning text-dark border border-warning px-2 py-1 fs-11 flex-shrink-0 ms-2">
+        Due: <?= htmlspecialchars($subscriptionBreadcrumbAlert['due_date']) ?>
+    </span>
+</div>
+<?php endif; ?>
+<?php if (!empty($companyDashboardAlert) && empty($subscriptionBreadcrumbAlert)): ?>
+<div class="mb-3">
+  <marquee behavior="scroll" direction="left" scrollamount="4" class="fw-semibold text-dark rounded-3 border border-warning bg-warning-subtle px-3 py-2" style="white-space: nowrap;">
+    <i data-lucide="alert-triangle" class="fs-14 align-middle me-2"></i>
+    <?= htmlspecialchars($companyDashboardAlert) ?>
+  </marquee>
+</div>
+<?php endif; ?>
 <!-- ==========================================
      STANDARD COMPANY / STAFF DASHBOARD
 =========================================== -->
@@ -25,6 +46,99 @@ include 'include/header.php';
 $companyDashboardId = (int)($headerCompanyId ?: ($_SESSION['company_id'] ?? 0));
 $currentUserId = getCurrentUserId();
 $currentUserType = $_SESSION['user_type'] ?? '';
+
+// Subscription installments for the current company only
+$upcomingCompanyInstallments = [];
+$overdueCompanyInstallments = [];
+$companyPaymentHistory = [];
+if ($companyDashboardId > 0) {
+    $upcomingCompanyInstallments = db_rows("
+        SELECT
+            i.installment_no,
+            i.amount,
+            i.paid_amount,
+            i.due_date,
+            i.status,
+            p.name AS plan_name,
+            DATEDIFF(i.due_date, CURDATE()) AS days_until_due
+        FROM company_subscription_installment i
+        LEFT JOIN company_subscription_plan csp
+            ON csp.id = i.company_subscription_plan_id
+        LEFT JOIN plan p ON p.id = csp.plan_id
+        WHERE i.company_id = $companyDashboardId
+          AND i.status IN ('pending', 'partial')
+          AND i.amount > i.paid_amount
+          AND i.due_date BETWEEN CURDATE() AND DATE_ADD(CURDATE(), INTERVAL 15 DAY)
+        ORDER BY i.due_date ASC, i.installment_no ASC
+    ");
+    $overdueCompanyInstallments = db_rows("
+        SELECT
+            i.installment_no,
+            i.amount,
+            i.paid_amount,
+            i.due_date,
+            i.status,
+            p.name AS plan_name,
+            DATEDIFF(CURDATE(), i.due_date) AS days_overdue
+        FROM company_subscription_installment i
+        LEFT JOIN company_subscription_plan csp
+            ON csp.id = i.company_subscription_plan_id
+        LEFT JOIN plan p ON p.id = csp.plan_id
+        WHERE i.company_id = $companyDashboardId
+          AND i.status IN ('pending', 'partial', 'overdue')
+          AND i.amount > i.paid_amount
+          AND i.due_date < CURDATE()
+        ORDER BY i.due_date ASC, i.installment_no ASC
+    ");
+    $companyPaymentHistory = db_rows("
+        SELECT
+            i.installment_no,
+            i.amount,
+            i.paid_amount,
+            i.due_date,
+            i.paid_date,
+            i.payment_method,
+            i.transaction_no,
+            i.status,
+            p.name AS plan_name
+        FROM company_subscription_installment i
+        LEFT JOIN company_subscription_plan csp
+            ON csp.id = i.company_subscription_plan_id
+        LEFT JOIN plan p ON p.id = csp.plan_id
+        WHERE i.company_id = $companyDashboardId
+        ORDER BY i.due_date DESC, i.installment_no DESC
+    ");
+}
+$companyPaymentTotal = 0;
+$companyPaymentPaid = 0;
+foreach ($companyPaymentHistory as $paymentHistoryRow) {
+    $companyPaymentTotal += (float)($paymentHistoryRow['amount'] ?? 0);
+    $companyPaymentPaid += (float)($paymentHistoryRow['paid_amount'] ?? 0);
+}
+$companyPaymentPending = max(0, $companyPaymentTotal - $companyPaymentPaid);
+
+$companyDashboardAlert = '';
+$companyPlanExpiryInfo = null;
+if ($companyDashboardId > 0) {
+    $companyPlanExpiryInfo = db_row("SELECT plan_expiry_date, subscription_status
+        FROM company_subscription_plan
+        WHERE company_id = $companyDashboardId AND subscription_status = 'active'
+        ORDER BY plan_expiry_date DESC, id DESC
+        LIMIT 1");
+}
+if (!empty($upcomingCompanyInstallments)) {
+    $nextInstallment = $upcomingCompanyInstallments[0];
+    $nextInstallmentDays = (int)($nextInstallment['days_until_due'] ?? 0);
+    $nextInstallmentDate = !empty($nextInstallment['due_date']) ? date('d M Y', strtotime($nextInstallment['due_date'])) : null;
+    $companyDashboardAlert = 'Your next installment is due in ' . ($nextInstallmentDays === 0 ? 'today' : $nextInstallmentDays . ' day' . ($nextInstallmentDays === 1 ? '' : 's')) . ($nextInstallmentDate ? ' on ' . $nextInstallmentDate : '') . '. Please complete the payment before the plan expires.';
+} elseif (!empty($companyPlanExpiryInfo['plan_expiry_date'])) {
+    $today = new DateTime('today');
+    $expiryDate = new DateTime($companyPlanExpiryInfo['plan_expiry_date']);
+    $daysRemaining = (int)$today->diff($expiryDate)->days;
+    if ($daysRemaining <= 15) {
+        $companyDashboardAlert = 'Your plan will expire on ' . date('d M Y', strtotime($companyPlanExpiryInfo['plan_expiry_date'])) . '. Please renew before the expiry date.';
+    }
+}
 
 // 1. Today's Lead Followups from company_lead_followups
 $compConditionLead = ($companyDashboardId > 0 && !$isSuperadmin) ? "AND clf.company_id = $companyDashboardId" : "";
@@ -241,6 +355,182 @@ for ($m = 1; $m <= 12; $m++) {
           <?php endforeach; ?>
         </select>
       </div>
+    </div>
+  </div>
+</div>
+
+<!-- Subscription Payment Reminders -->
+<div class="row g-3 mb-4">
+  <div class="col-xl-6">
+    <div class="card h-100 border-0 shadow-sm">
+      <div class="card-header bg-secondary text-white py-3 px-4 d-flex align-items-center justify-content-between">
+        <h5 class="mb-0 fw-bold text-white">Next Payment (Next 15 Days)</h5>
+        <span class="badge bg-white text-primary"><?= count($upcomingCompanyInstallments) ?> Due</span>
+      </div>
+      <div class="card-body p-0">
+        <div class="table-responsive">
+          <table class="table table-hover align-middle mb-0 text-nowrap">
+            <thead class="table-light fs-12 text-secondary">
+              <tr>
+                <th class="ps-3 py-3">Plan</th>
+                <th>Installment</th>
+                <th>Due Date</th>
+                <th class="text-end pe-3">Pending Amount</th>
+              </tr>
+            </thead>
+            <tbody class="fs-13">
+              <?php if (!empty($upcomingCompanyInstallments)): ?>
+                <?php foreach ($upcomingCompanyInstallments as $installment):
+                  $daysUntilDue = (int)$installment['days_until_due'];
+                  $pendingAmount = max(0, (float)$installment['amount'] - (float)$installment['paid_amount']);
+                ?>
+                  <tr>
+                    <td class="ps-3 fw-semibold"><?= htmlspecialchars($installment['plan_name'] ?? 'Subscription') ?></td>
+                    <td>#<?= (int)$installment['installment_no'] ?></td>
+                    <td>
+                      <div><?= date('d M Y', strtotime($installment['due_date'])) ?></div>
+                      <small class="text-primary">
+                        <?= $daysUntilDue === 0 ? 'Due today' : $daysUntilDue . ' day' . ($daysUntilDue === 1 ? '' : 's') . ' left' ?>
+                      </small>
+                    </td>
+                    <td class="text-end pe-3 fw-semibold text-danger">₹<?= number_format($pendingAmount, 2) ?></td>
+                  </tr>
+                <?php endforeach; ?>
+              <?php else: ?>
+                <tr><td colspan="4" class="text-center text-muted py-4">No payments due in the next 15 days.</td></tr>
+              <?php endif; ?>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-xl-6">
+    <div class="card h-100 border-0 shadow-sm">
+      <div class="card-header bg-danger text-white py-3 px-4 d-flex align-items-center justify-content-between">
+        <h5 class="mb-0 fw-bold text-white">Overdue Payments</h5>
+        <span class="badge bg-white text-danger"><?= count($overdueCompanyInstallments) ?> Overdue</span>
+      </div>
+      <div class="card-body p-0">
+        <div class="table-responsive">
+          <table class="table table-hover align-middle mb-0 text-nowrap">
+            <thead class="table-light fs-12 text-secondary">
+              <tr>
+                <th class="ps-3 py-3">Plan</th>
+                <th>Installment</th>
+                <th>Due Date</th>
+                <th class="text-end pe-3">Pending Amount</th>
+              </tr>
+            </thead>
+            <tbody class="fs-13">
+              <?php if (!empty($overdueCompanyInstallments)): ?>
+                <?php foreach ($overdueCompanyInstallments as $installment):
+                  $daysOverdue = (int)$installment['days_overdue'];
+                  $pendingAmount = max(0, (float)$installment['amount'] - (float)$installment['paid_amount']);
+                ?>
+                  <tr class="table-danger-subtle">
+                    <td class="ps-3 fw-semibold"><?= htmlspecialchars($installment['plan_name'] ?? 'Subscription') ?></td>
+                    <td>#<?= (int)$installment['installment_no'] ?></td>
+                    <td>
+                      <div><?= date('d M Y', strtotime($installment['due_date'])) ?></div>
+                      <small class="text-danger"><?= $daysOverdue ?> day<?= $daysOverdue === 1 ? '' : 's' ?> overdue</small>
+                    </td>
+                    <td class="text-end pe-3 fw-semibold text-danger">₹<?= number_format($pendingAmount, 2) ?></td>
+                  </tr>
+                <?php endforeach; ?>
+              <?php else: ?>
+                <tr><td colspan="4" class="text-center text-muted py-4">No overdue payments.</td></tr>
+              <?php endif; ?>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Company Subscription Payment History -->
+<div class="card mb-4 border-0 shadow-sm overflow-hidden">
+  <div class="card-header bg-dark text-white py-3 px-4 d-flex flex-wrap align-items-center justify-content-between gap-3">
+    <h5 class="mb-0 fw-bold text-white">Subscription Payment History</h5>
+    <span class="badge bg-white text-dark"><?= count($companyPaymentHistory) ?> Installments</span>
+  </div>
+  <div class="card-body p-4">
+    <div class="row g-3 mb-4">
+      <div class="col-md-4">
+        <div class="p-3 rounded-3 bg-light h-100">
+          <small class="text-muted">Total Amount</small>
+          <div class="fs-14 fw-bold text-dark">₹<?= number_format($companyPaymentTotal, 2) ?></div>
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="p-3 rounded-3 bg-success-subtle h-100">
+          <small class="text-success">Total Paid</small>
+          <div class="fs-14 fw-bold text-success">₹<?= number_format($companyPaymentPaid, 2) ?></div>
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="p-3 rounded-3 bg-danger-subtle h-100">
+          <small class="text-danger">Remaining Balance</small>
+          <div class="fs-14 fw-bold text-danger">₹<?= number_format($companyPaymentPending, 2) ?></div>
+        </div>
+      </div>
+    </div>
+    <div class="table-responsive">
+      <table class="table table-hover align-middle mb-0 text-nowrap">
+        <thead class="table-light fs-12 text-secondary">
+          <tr>
+            <th>Plan</th>
+            <th>Installment</th>
+            <th>Due Date</th>
+            <th>Amount</th>
+            <th>Paid</th>
+            <th>Payment Date</th>
+            <th>Payment Method</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody class="fs-13">
+          <?php if (!empty($companyPaymentHistory)): ?>
+            <?php foreach ($companyPaymentHistory as $historyRow):
+              $historyStatus = strtolower(trim((string)($historyRow['status'] ?? 'pending')));
+              if (
+                  in_array($historyStatus, ['pending', 'partial'], true)
+                  && !empty($historyRow['due_date'])
+                  && $historyRow['due_date'] < date('Y-m-d')
+              ) {
+                  $historyStatus = 'overdue';
+              }
+              $historyBadgeClass = 'bg-secondary-subtle text-secondary';
+              if ($historyStatus === 'paid') {
+                  $historyBadgeClass = 'bg-success-subtle text-success';
+              } elseif ($historyStatus === 'partial') {
+                  $historyBadgeClass = 'bg-warning-subtle text-warning';
+              } elseif ($historyStatus === 'overdue') {
+                  $historyBadgeClass = 'bg-danger-subtle text-danger';
+              }
+            ?>
+              <tr>
+                <td class="fw-semibold"><?= htmlspecialchars($historyRow['plan_name'] ?? 'Subscription') ?></td>
+                <td>#<?= (int)$historyRow['installment_no'] ?></td>
+                <td><?= !empty($historyRow['due_date']) ? date('d M Y', strtotime($historyRow['due_date'])) : '-' ?></td>
+                <td>₹<?= number_format((float)$historyRow['amount'], 2) ?></td>
+                <td class="text-success fw-semibold">₹<?= number_format((float)$historyRow['paid_amount'], 2) ?></td>
+                <td><?= !empty($historyRow['paid_date']) ? date('d M Y', strtotime($historyRow['paid_date'])) : '-' ?></td>
+                <td><?= htmlspecialchars($historyRow['payment_method'] ?? '-') ?></td>
+                <td>
+                  <span class="badge <?= $historyBadgeClass ?>">
+                    <?= htmlspecialchars(ucfirst($historyStatus)) ?>
+                  </span>
+                </td>
+              </tr>
+            <?php endforeach; ?>
+          <?php else: ?>
+            <tr><td colspan="8" class="text-center text-muted py-4">No subscription payment history found.</td></tr>
+          <?php endif; ?>
+        </tbody>
+      </table>
     </div>
   </div>
 </div>

@@ -188,6 +188,33 @@ if (isset($_POST['action']) && $_POST['action'] === 'get_followup') {
         $formattedDate = date('d-m-Y H:i', strtotime($fu['followup_date']));
     }
     $fu['formatted_date'] = $formattedDate;
+    $fu['followup_type_label'] = get_lead_followup_type_label($fu['followup_type'] ?? '');
+
+    // Resolve followup_type_id if followup_type is stored as name/slug (e.g. 'call', 'Phone Call')
+    $rawType = trim((string)($fu['followup_type'] ?? ''));
+    if (!empty($rawType)) {
+        if (is_numeric($rawType)) {
+            $fu['followup_type_id'] = (int)$rawType;
+        } else {
+            $matchedType = db_row("SELECT id FROM lead_followup_type WHERE LOWER(name) = '" . db_escape(strtolower($rawType)) . "' OR LOWER(name) LIKE '%" . db_escape(strtolower($rawType)) . "%' LIMIT 1");
+            if (!empty($matchedType['id'])) {
+                $fu['followup_type_id'] = (int)$matchedType['id'];
+            }
+        }
+    }
+
+    // Resolve stage id if stage is stored as slug (e.g. 'new', 'contacted')
+    $rawStage = trim((string)($fu['stage'] ?? ''));
+    if (!empty($rawStage)) {
+        if (is_numeric($rawStage)) {
+            $fu['stage_id'] = (int)$rawStage;
+        } else {
+            $matchedStage = db_row("SELECT id FROM lead_status WHERE LOWER(name) = '" . db_escape(strtolower($rawStage)) . "' LIMIT 1");
+            if (!empty($matchedStage['id'])) {
+                $fu['stage_id'] = (int)$matchedStage['id'];
+            }
+        }
+    }
 
     echo json_encode(['status' => true, 'data' => $fu]);
     exit;
@@ -448,10 +475,41 @@ if (isset($_POST['action']) && $_POST['action'] === 'convert_to_company') {
     }
 
     // 2. Fetch selected Plan
-    $plan = db_row("SELECT * FROM plan WHERE id = $planId LIMIT 1");
+    $plan = db_row("SELECT * FROM plan WHERE id = $planId AND status = 1 LIMIT 1");
     if (empty($plan)) {
-        echo json_encode(['status' => false, 'message' => 'Selected subscription plan not found.']);
+        echo json_encode(['status' => false, 'message' => 'Selected active subscription plan not found.']);
         exit;
+    }
+
+    global $conn;
+    if (!mysqli_begin_transaction($conn)) {
+        echo json_encode(['status' => false, 'message' => 'Could not start company onboarding. Please try again.']);
+        exit;
+    }
+    $abortConversion = function ($message) use ($conn) {
+        mysqli_rollback($conn);
+        echo json_encode(['status' => false, 'message' => $message]);
+        exit;
+    };
+
+    // Serialize conversion attempts for this lead and prevent duplicate tenant creation.
+    $lead = db_row("SELECT * FROM lead WHERE id = $leadId LIMIT 1 FOR UPDATE");
+    if (empty($lead)) {
+        $abortConversion('Lead not found.');
+    }
+    $linkedCompany = db_row("SELECT id FROM company WHERE lead_id = $leadId LIMIT 1");
+    if (!empty($lead['converted_company_id']) || !empty($linkedCompany)) {
+        $abortConversion('This lead has already been converted to a company.');
+    }
+    $companyName = trim($lead['business_name'] ?? '');
+    if ($companyName === '') {
+        $companyName = 'Company ' . ($lead['lead_number'] ?: ('OI-' . $leadId));
+    }
+    $personName = trim($lead['contact_name'] ?? '') ?: $companyName;
+    $mobileNo = trim($lead['mobile_no'] ?? '');
+    $email = strtolower(trim($lead['email'] ?? ''));
+    if ($email === '' || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        $abortConversion('Lead must have a valid email address before converting.');
     }
 
     // Default company type
@@ -481,9 +539,8 @@ if (isset($_POST['action']) && $_POST['action'] === 'convert_to_company') {
     $compRes = db_query($insertCompanySql);
     $newCompanyId = db_insert_id($conn);
 
-    if ($newCompanyId <= 0) {
-        echo json_encode(['status' => false, 'message' => 'Failed to create Company record.']);
-        exit;
+    if (!$compRes || $newCompanyId <= 0) {
+        $abortConversion('Failed to create Company record.');
     }
 
     // 4. Role Create (matching company/store.php: name = company name)
@@ -495,12 +552,17 @@ if (isset($_POST['action']) && $_POST['action'] === 'convert_to_company') {
     } else {
         $comSql = "INSERT INTO roles (company_id, name, created_by, created_at, updated_at) 
                    VALUES ('$newCompanyId', '$roleNameEsc', '$userId', NOW(), NOW())";
-        db_query($comSql);
+        if (!db_query($comSql)) {
+            $abortConversion('Failed to create the company role.');
+        }
         $roleId = db_insert_id($conn);
+    }
+    if ($roleId <= 0) {
+        $abortConversion('Failed to create the company role.');
     }
 
     // 5. User Create (company_admin) (matching company/store.php)
-    $ip = $_SERVER['REMOTE_ADDR'] ?? '';
+    $ip = db_escape($_SERVER['REMOTE_ADDR'] ?? '');
     $userData = db_row("SELECT * FROM users WHERE company_id = $newCompanyId AND role_id = $roleId LIMIT 1");
     if (!empty($userData['id'])) {
         $adminUserId = (int)$userData['id'];
@@ -517,7 +579,9 @@ if (isset($_POST['action']) && $_POST['action'] === 'convert_to_company') {
                     ip_address = '$ip', 
                     updated_at = NOW() 
                 WHERE id = $adminUserId";
-        db_query($sql);
+        if (!db_query($sql)) {
+            $abortConversion('Failed to update the company admin user.');
+        }
     } else {
         $sql = "INSERT INTO users (
                     role_id, company_id, company_plan_id, name, username, email, password, mobile_no, 
@@ -526,8 +590,13 @@ if (isset($_POST['action']) && $_POST['action'] === 'convert_to_company') {
                     '$roleId', '$newCompanyId', '$planId', '$pNameEsc', '$cNameEsc', '$emailEsc', '$hashedPass', '$mobEsc', 
                     $countryEsc, $stateEsc, $cityEsc, 'company_admin', '$ip', '$userId', NOW(), NOW()
                 )";
-        db_query($sql);
+        if (!db_query($sql)) {
+            $abortConversion('Failed to create the company admin user.');
+        }
         $adminUserId = db_insert_id($conn);
+    }
+    if ($adminUserId <= 0) {
+        $abortConversion('Failed to create the company admin user.');
     }
 
     // 6. Role Permissions based on Plan's panel_right modules (matching company/store.php)
@@ -548,7 +617,9 @@ if (isset($_POST['action']) && $_POST['action'] === 'convert_to_company') {
                     $permSql = "INSERT INTO role_permissions (company_id, role_id, module_id, views, adds, updates, deletes, print, excel, created_by, created_at, updated_at) 
                                 VALUES ($newCompanyId, $roleId, $mId, 1, 1, 1, 1, 1, 1, $userId, NOW(), NOW())";
                 }
-                db_query($permSql);
+                if (!db_query($permSql)) {
+                    $abortConversion('Failed to configure company plan permissions.');
+                }
             }
         }
     }
@@ -582,12 +653,25 @@ if (isset($_POST['action']) && $_POST['action'] === 'convert_to_company') {
                         $newCompanyId, $planId, '$startDate', '$endDate', '$extraDetailJson',
                         '$expiryDate', 'active', NULL, $userId, NOW(), NOW()
                     )";
-    db_query($insertSubSql);
+    if (!db_query($insertSubSql)) {
+        $abortConversion('Failed to activate the company subscription plan.');
+    }
+    $subscriptionId = db_insert_id($conn);
+    if ($subscriptionId <= 0) {
+        $abortConversion('Failed to activate the company subscription plan.');
+    }
 
     // 8. Update Lead to Converted & link converted company ID
     $convStatusRow = db_row("SELECT id FROM lead_status WHERE LOWER(name) = 'converted' LIMIT 1");
     $convStageVal = $convStatusRow ? (string)$convStatusRow['id'] : 'converted';
-    db_query("UPDATE lead SET `lead_stage` = '$convStageVal', `converted_company_id` = $newCompanyId, `updated_by` = $userId, `updated_at` = NOW() WHERE `id` = $leadId");
+    if (!db_query("UPDATE lead SET `lead_stage` = '$convStageVal', `converted_company_id` = $newCompanyId, `updated_by` = $userId, `updated_at` = NOW() WHERE `id` = $leadId")) {
+        $abortConversion('Company was created but the lead could not be marked converted.');
+    }
+    if (!mysqli_commit($conn)) {
+        mysqli_rollback($conn);
+        echo json_encode(['status' => false, 'message' => 'Could not complete company onboarding. Please try again.']);
+        exit;
+    }
 
     // Construct direct share message for Superadmin (WhatsApp / Copy) without email sending
     $waText = urlencode("Hello $personName,\n\nWelcome to our platform! Your workspace for *$companyName* is ready.\n\nLogin URL: " . SITE_URL . "\nEmail: $email\nPassword: $passwordRaw\n\nPlan: " . ($plan['name'] ?? '') . " (Valid for $planDays days).\n\nThank you!");

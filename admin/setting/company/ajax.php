@@ -63,6 +63,12 @@ handle_datatable([
                        data-name="' . htmlspecialchars($row['name'] ?? '', ENT_QUOTES) . '">
                        <i data-lucide="history" class="fs-14"></i> Subscription History
                     </a>
+                </li><li>
+                    <a class="dropdown-item text-warning btn-view-payment-details" href="javascript:void(0);" 
+                       data-id="' . (int)$row['id'] . '" 
+                       data-name="' . htmlspecialchars($row['name'] ?? '', ENT_QUOTES) . '">
+                       <i data-lucide="credit-card" class="fs-14"></i> Payment Details
+                    </a>
                 </li>'
             ])
         ];

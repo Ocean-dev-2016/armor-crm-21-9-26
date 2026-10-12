@@ -11,6 +11,19 @@ $tbl = $tbl ?? '';
 $fields = $fields ?? 'name';
 $module = $module ?? $tbl;
 ?>
+<?php if (!empty($subscriptionBreadcrumbAlert)): ?>
+<div class="alert alert-warning border border-warning-subtle shadow-sm rounded-3 py-2 px-3 mb-2 d-flex align-items-center justify-content-between" role="alert">
+    <div class="d-flex align-items-center gap-2">
+        <i data-lucide="alert-triangle" class="fs-18 text-warning flex-shrink-0"></i>
+        <div class="fs-13 fw-medium text-dark">
+            <?= htmlspecialchars($subscriptionBreadcrumbAlert['message']) ?>
+        </div>
+    </div>
+    <span class="badge bg-warning text-dark border border-warning px-2 py-1 fs-11 flex-shrink-0 ms-2">
+        Due: <?= htmlspecialchars($subscriptionBreadcrumbAlert['due_date']) ?>
+    </span>
+</div>
+<?php endif; ?>
 <div class="card mb-2">
     <div class="card-body breadcrumb-body">
         <div class="page-header">

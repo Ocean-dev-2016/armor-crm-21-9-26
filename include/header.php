@@ -72,6 +72,119 @@ $isStandardUser = isset($_SESSION['user_type']) && $_SESSION['user_type'] === 'u
 $homeUrl = $isSuperadmin ? SITE_URL : ($isStandardUser ? SITE_URL . 'user-dashboard' : SITE_URL . 'dashboard');
 $allowedModules = null; 
 
+// Subscription & Payment check for tenant companies (non-superadmin)
+$subscriptionPopup = null;
+$subscriptionBreadcrumbAlert = null;
+
+if (!$isSuperadmin && $headerCompanyId > 0) {
+    // 1. Fetch latest subscription plan for the company
+    $activeSubPlan = db_row("
+        SELECT csp.*, p.name AS plan_name
+        FROM company_subscription_plan csp
+        LEFT JOIN plan p ON p.id = csp.plan_id
+        WHERE csp.company_id = $headerCompanyId
+        ORDER BY csp.id DESC
+        LIMIT 1
+    ");
+
+    $todayStr = date('Y-m-d');
+    $isExpired = false;
+    $noPayment = false;
+
+    if (empty($activeSubPlan)) {
+        // No subscription record at all
+        $subscriptionPopup = [
+            'type' => 'no_plan',
+            'title' => 'No Active Subscription Plan',
+            'message' => 'Your company does not have an active subscription plan. Please contact the administrator to activate your plan.'
+        ];
+    } else {
+        // Check if plan is expired
+        $expiryDate = $activeSubPlan['plan_expiry_date'] ?? $activeSubPlan['plan_to'] ?? '';
+        $subStatus = strtolower(trim($activeSubPlan['subscription_status'] ?? ''));
+
+        if ($subStatus === 'expired' || (!empty($expiryDate) && $expiryDate < $todayStr)) {
+            $isExpired = true;
+        }
+
+        // Check if at least 1 payment has been received (paid_amount > 0 or status = 'paid')
+        $cspId = (int)$activeSubPlan['id'];
+        $paidPaymentCheck = db_row("
+            SELECT SUM(paid_amount) AS total_paid
+            FROM company_subscription_installment
+            WHERE company_id = $headerCompanyId AND (company_subscription_plan_id = $cspId OR company_subscription_plan_id IS NULL)
+        ");
+        $totalPaidAmount = (float)($paidPaymentCheck['total_paid'] ?? 0);
+
+        if ($totalPaidAmount <= 0) {
+            // Also check payment table directly as a fallback
+            $paymentRowCheck = db_row("
+                SELECT SUM(paid_amount) AS total_paid
+                FROM company_subscription_payment
+                WHERE company_id = $headerCompanyId AND company_subscription_plan_id = $cspId
+            ");
+            $totalPaidAmount += (float)($paymentRowCheck['total_paid'] ?? 0);
+        }
+
+        if ($totalPaidAmount <= 0) {
+            $noPayment = true;
+        }
+
+        if ($isExpired) {
+            $subscriptionPopup = [
+                'type' => 'expired',
+                'title' => 'Subscription Plan Expired',
+                'message' => 'Your subscription plan has expired. Please contact the administrator to renew your subscription.'
+            ];
+        } elseif ($noPayment) {
+            $subscriptionPopup = [
+                'type' => 'unpaid',
+                'title' => 'Payment Pending',
+                'message' => 'No payment has been received for your company subscription plan yet. Please contact the administrator.'
+            ];
+        } else {
+            // 2. Check next unpaid installment status and due date
+            $nextDueInstallment = db_row("
+                SELECT i.*, DATEDIFF(CURDATE(), i.due_date) AS days_passed
+                FROM company_subscription_installment i
+                WHERE i.company_id = $headerCompanyId
+                  AND (i.company_subscription_plan_id = $cspId OR i.company_subscription_plan_id IS NULL)
+                  AND (i.status IN ('pending', 'partial', 'overdue') OR i.paid_amount < i.amount)
+                ORDER BY i.due_date ASC, i.installment_no ASC
+                LIMIT 1
+            ");
+
+            if (!empty($nextDueInstallment)) {
+                $daysPassed = (int)($nextDueInstallment['days_passed'] ?? 0);
+                $instNo = (int)($nextDueInstallment['installment_no'] ?? 1);
+                $instDueFormatted = !empty($nextDueInstallment['due_date']) ? date('d-m-Y', strtotime($nextDueInstallment['due_date'])) : '';
+                $pendingAmount = number_format((float)($nextDueInstallment['amount'] - $nextDueInstallment['paid_amount']), 2);
+
+                if ($daysPassed > 5) {
+                    // Due date crossed by MORE than 5 days and payment still not done -> Lockout popup
+                    $subscriptionPopup = [
+                        'type' => 'installment_overdue',
+                        'title' => 'Installment Payment Overdue',
+                        'message' => "Your Installment #{$instNo} was due on {$instDueFormatted} (Pending: ₹{$pendingAmount}) and has exceeded the 5-day grace period. Please contact admin to complete your payment."
+                    ];
+                } elseif ($daysPassed >= 0 && $daysPassed <= 5) {
+                    // Due date has arrived and within 5 days grace period -> Show alert message in breadcrumb
+                    $daysRemainingGrace = 5 - $daysPassed;
+                    $graceText = ($daysRemainingGrace === 0) ? "Today is the last day of grace period!" : "You have {$daysRemainingGrace} day(s) grace period remaining.";
+                    $subscriptionBreadcrumbAlert = [
+                        'type' => 'warning',
+                        'installment_no' => $instNo,
+                        'due_date' => $instDueFormatted,
+                        'pending_amount' => $pendingAmount,
+                        'days_overdue' => $daysPassed,
+                        'message' => "Reminder: Installment #{$instNo} of ₹{$pendingAmount} was due on {$instDueFormatted}. {$graceText} Please complete the payment to prevent service suspension."
+                    ];
+                }
+            }
+        }
+    }
+}
+
 if (!$isSuperadmin) {
   $plan_id = (int)($_SESSION['plan_id'] ?? 0);
   $allowedPlanModules = [];
@@ -425,6 +538,25 @@ $todayFollowupCount = $notifTotalPending;
 
 include BASE_PATH . '/include/css.php';
 ?>
+<?php if (!empty($subscriptionPopup)): ?>
+<style>
+  /* Block access and obscure dashboard / underlying data */
+  .main-wrapper {
+    filter: blur(8px) grayscale(85%) !important;
+    pointer-events: none !important;
+    user-select: none !important;
+  }
+  .swal2-container {
+    backdrop-filter: blur(12px) !important;
+    background: rgba(15, 23, 42, 0.88) !important;
+    z-index: 999999 !important;
+  }
+  .swal2-popup {
+    border: 1px solid rgba(255, 255, 255, 0.15) !important;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.6) !important;
+  }
+</style>
+<?php endif; ?>
 <script>
   window.HEADER_SEARCH_MENUS = <?= json_encode($searchableMenus, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP) ?>;
 </script>

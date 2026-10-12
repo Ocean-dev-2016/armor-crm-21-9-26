@@ -63,6 +63,19 @@ $country = db_rows($sql_country);
 $sql_plan = "SELECT * FROM plan WHERE status = 1";
 $plan = db_rows($sql_plan);
 
+// Edit mode: existing payment & installments fetch karo
+$existingPayment = null;
+$existingInstallments = [];
+if ($isEdit && !empty($company['plan_id'])) {
+    $activeSub = db_row("SELECT id FROM company_subscription_plan WHERE company_id = $id AND subscription_status = 'active' LIMIT 1");
+    if (!empty($activeSub)) {
+        $existingPayment = db_row("SELECT * FROM company_subscription_payment WHERE company_subscription_plan_id = " . (int)$activeSub['id'] . " ORDER BY id DESC LIMIT 1");
+        if (!empty($existingPayment)) {
+            $existingInstallments = db_rows("SELECT * FROM company_subscription_installment WHERE payment_id = " . (int)$existingPayment['id'] . " ORDER BY installment_no ASC");
+        }
+    }
+}
+
 include BASE_PATH . '/include/header.php';
 
 $requiredAction = $isEdit ? 'updates' : 'adds';
@@ -193,8 +206,8 @@ include BASE_PATH . '/component/breadcrumb.php';
                                     <select name="plan_id" id="select-plan" class="form-select">
                                         <option value="">Select Plan</option>
                                         <?php foreach ($plan as $p): ?>
-                                            <option value="<?= $p['id'] ?>" <?= ((int)$p['id'] === (int)$company['plan_id']) ? 'selected' : '' ?>>
-                                                <?= htmlspecialchars($p['name']) ?>
+                                            <option value="<?= $p['id'] ?>" data-price="<?= (float)($p['price'] ?? 0) ?>" data-days="<?= (int)($p['days'] ?? 0) ?>" <?= ((int)$p['id'] === (int)$company['plan_id']) ? 'selected' : '' ?>>
+                                                <?= htmlspecialchars($p['name']) ?> (₹<?= number_format((float)($p['price'] ?? 0), 2) ?>)
                                             </option>
                                         <?php endforeach; ?>
                                     </select>
@@ -218,7 +231,118 @@ include BASE_PATH . '/component/breadcrumb.php';
                             </div>
                         </div>
 
-                        <!-- Row 3: Indiamart API Key, Country, State, City -->
+                        <!-- Subscription Payment & Installment Setup (Shown when Plan is selected, Add mode only) -->
+                        <div id="planPaymentContainer" class="card border border-primary-subtle bg-light-subtle rounded-3 p-3 mb-3 <?= ($isEdit || empty($company['plan_id'])) ? 'd-none' : '' ?>">
+                            <div class="d-flex align-items-center justify-content-between mb-3 border-bottom pb-2">
+                                <h6 class="fs-14 fw-bold text-primary mb-0 d-flex align-items-center gap-2">
+                                    <i data-lucide="credit-card" class="fs-16"></i> Plan Payment & Installment Setup
+                                </h6>
+                                <div class="fs-13 fw-semibold text-dark">
+                                    Total Plan Price: <span class="badge bg-primary text-white fs-13" id="displayPlanPrice">₹0.00</span>
+                                </div>
+                            </div>
+
+                            <input type="hidden" name="total_plan_price" id="inputTotalPlanPrice" value="0">
+
+                            <div class="row g-3 align-items-center mb-3">
+                                <div class="col-md-4">
+                                    <label class="form-label fw-semibold">Payment Mode</label>
+                                    <div class="d-flex align-items-center gap-3 mt-1">
+                                        <div class="form-check" id="fullRadioWrapper">
+                                            <input class="form-check-input" type="radio" name="payment_type" id="payTypeFull" value="full" checked>
+                                            <label class="form-check-label fw-medium" for="payTypeFull">Full Payment</label>
+                                        </div>
+                                        <div class="form-check" id="installmentRadioWrapper">
+                                            <input class="form-check-input" type="radio" name="payment_type" id="payTypeInstallment" value="installment">
+                                            <label class="form-check-label fw-medium" for="payTypeInstallment">Installment (EMI)</label>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="col-md-8 payment-full-fields">
+                                    <div class="row g-2">
+                                        <div class="col-sm-6">
+                                            <label class="form-label fs-12 fw-semibold">Payment Method</label>
+                                            <select name="full_payment_method" class="form-select form-select-sm">
+                                                <option value="Cash">Cash</option>
+                                                <option value="UPI">UPI / QR Code</option>
+                                                <option value="Bank Transfer">Bank Transfer (NEFT/RTGS/IMPS)</option>
+                                                <option value="Cheque">Cheque</option>
+                                            </select>
+                                        </div>
+                                        <div class="col-sm-6">
+                                            <label class="form-label fs-12 fw-semibold">Transaction / Ref No.</label>
+                                            <input type="text" name="full_transaction_no" class="form-control form-control-sm" placeholder="e.g. UPI Ref / Cheque No">
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Installment Configuration Box (Shown only when Installment selected) -->
+                            <div id="installmentConfigBox" class="d-none border-top pt-3">
+                                <div class="row g-3 mb-3">
+                                    <div class="col-md-3 col-sm-6">
+                                        <label class="form-label fs-12 fw-semibold">No. of Installments</label>
+                                        <select name="installment_count" id="installmentCount" class="form-select form-select-sm">
+                                            <option value="2">2 Installments</option>
+                                            <option value="3">3 Installments</option>
+                                            <option value="4" selected>4 Installments</option>
+                                            <option value="5">5 Installments</option>
+                                            <option value="6">6 Installments</option>
+                                            <option value="12">12 Installments</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-3 col-sm-6">
+                                        <label class="form-label fs-12 fw-semibold">Frequency</label>
+                                        <select name="installment_frequency" id="installmentFrequency" class="form-select form-select-sm">
+                                            <option value="monthly" selected>Monthly</option>
+                                            <option value="quarterly">Quarterly (Every 3 Months)</option>
+                                            <option value="half_yearly">Half Yearly (Every 6 Months)</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-3 col-sm-6">
+                                        <label class="form-label fs-12 fw-semibold">1st Installment Date</label>
+                                        <input type="date" name="first_due_date" id="firstDueDate" class="form-control form-control-sm" value="<?= date('Y-m-d') ?>">
+                                    </div>
+                                    <div class="col-md-3 col-sm-6 d-flex align-items-end">
+                                        <button type="button" class="btn btn-outline-primary btn-sm w-100" id="btnRegenerateSchedule">
+                                            <i data-lucide="refresh-cw" class="fs-12 align-middle me-1"></i> Recalculate
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <!-- Schedule Preview Table -->
+                                <div class="table-responsive rounded-2 border bg-white">
+                                    <table class="table table-sm table-bordered align-middle mb-0" id="installmentPreviewTable">
+                                        <thead class="table-light">
+                                            <tr>
+                                                <th class="text-center" style="width: 70px;">#</th>
+                                                <th>Due Date</th>
+                                                <th style="width: 220px;">Amount (₹)</th>
+                                                <th>Initial Status</th>
+                                                <th>Payment Method (if Paid)</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="installmentScheduleBody">
+                                            <!-- Dynamically generated rows -->
+                                        </tbody>
+                                        <tfoot class="table-light fw-bold">
+                                            <tr>
+                                                <td colspan="2" class="text-end">Total Scheduled:</td>
+                                                <td><span id="installmentTotalSum">₹0.00</span></td>
+                                                <td colspan="2"><span id="installmentTotalMatchBadge" class="badge bg-success">Matched</span></td>
+                                            </tr>
+                                        </tfoot>
+                                    </table>
+                                </div>
+                                <small class="text-muted d-block mt-2">
+                                    <i data-lucide="info" class="fs-12 align-middle me-1"></i>
+                                    You can adjust the individual installment amounts or due dates. The first installment can be marked as Paid immediately if down-payment is received today.
+                                </small>
+                            </div>
+                        </div>
+
+                        <!-- Row 2: Indiamart API Key, Country, State, City -->
                         <div class="row g-3">
                             <div class="col-lg-3 col-md-6 col-sm-6">
                                 <div class="mb-3">
@@ -1166,7 +1290,228 @@ include BASE_PATH . '/include/footer.php';
                 goToStep(targetStep);
             });
         <?php endif; ?>
+
+        // =====================================================
+        // PLAN PAYMENT & INSTALLMENT SCHEDULE LOGIC
+        // =====================================================
+        function getSelectedPlanPrice() {
+            let $opt = $('#select-plan option:selected');
+            let price = parseFloat($opt.data('price')) || 0;
+            return price;
+        }
+
+        var isEditMode = <?= $isEdit ? 'true' : 'false' ?>;
+
+        function updatePlanPriceDisplay() {
+            let price = getSelectedPlanPrice();
+            let planId = $('#select-plan').val();
+
+            // Edit mode ma payment container show nahi
+            if (isEditMode) return;
+
+            // If no plan selected OR plan price is 0, completely hide payment & installment details container
+            if (planId && parseInt(planId) > 0 && price > 0) {
+                $('#planPaymentContainer').removeClass('d-none');
+                $('#displayPlanPrice').text('₹' + price.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
+                $('#inputTotalPlanPrice').val(price);
+
+                $('#installmentRadioWrapper').removeClass('d-none');
+                generateInstallmentSchedule();
+            } else {
+                // Hide entire payment container if price is 0 or no plan selected
+                $('#planPaymentContainer').addClass('d-none');
+                $('#inputTotalPlanPrice').val(price || 0);
+                $('#payTypeFull').prop('checked', true);
+                $('.payment-full-fields').addClass('d-none');
+                $('#installmentConfigBox').addClass('d-none');
+            }
+        }
+
+        // Toggle Full vs Installment Fields
+        $('input[name="payment_type"]').on('change', function() {
+            let type = $(this).val();
+            if (type === 'installment') {
+                $('.payment-full-fields').addClass('d-none');
+                $('#installmentConfigBox').removeClass('d-none');
+                generateInstallmentSchedule();
+            } else {
+                $('.payment-full-fields').removeClass('d-none');
+                $('#installmentConfigBox').addClass('d-none');
+            }
+            if (window.lucide) lucide.createIcons();
+        });
+
+        // Generate Installment Schedule Table Rows
+        function generateInstallmentSchedule() {
+            let totalPrice = getSelectedPlanPrice();
+            let count = parseInt($('#installmentCount').val()) || 4;
+            let freq = $('#installmentFrequency').val();
+            let firstDateStr = $('#firstDueDate').val() || new Date().toISOString().split('T')[0];
+
+            let baseDate = new Date(firstDateStr);
+            let perInstallment = Math.floor((totalPrice / count) * 100) / 100;
+            let remainder = Math.round((totalPrice - (perInstallment * count)) * 100) / 100;
+
+            let html = '';
+            for (let i = 1; i <= count; i++) {
+                let dueDate = new Date(baseDate);
+                if (i > 1) {
+                    let monthsPerInstallment = freq === 'quarterly' ? 3 : (freq === 'half_yearly' ? 6 : 1);
+                    let monthOffset = baseDate.getMonth() + ((i - 1) * monthsPerInstallment);
+                    let targetYear = baseDate.getFullYear() + Math.floor(monthOffset / 12);
+                    let targetMonth = monthOffset % 12;
+                    let lastDayOfTargetMonth = new Date(targetYear, targetMonth + 1, 0).getDate();
+                    dueDate = new Date(targetYear, targetMonth, Math.min(baseDate.getDate(), lastDayOfTargetMonth));
+                }
+
+                // Format YYYY-MM-DD
+                let yyyy = dueDate.getFullYear();
+                let mm = String(dueDate.getMonth() + 1).padStart(2, '0');
+                let dd = String(dueDate.getDate()).padStart(2, '0');
+                let formattedDate = `${yyyy}-${mm}-${dd}`;
+
+                // Add remainder to the first installment
+                let amount = (i === 1) ? (perInstallment + remainder).toFixed(2) : perInstallment.toFixed(2);
+
+                html += `
+                    <tr class="installment-row" data-index="${i}">
+                        <td class="text-center fw-bold fs-12">${i}</td>
+                        <td>
+                            <input type="date" name="installments[${i}][due_date]" class="form-control form-control-sm inst-due-date" value="${formattedDate}" required>
+                        </td>
+                        <td>
+                            <div class="input-group input-group-sm">
+                                <span class="input-group-text">₹</span>
+                                <input type="number" step="0.01" name="installments[${i}][amount]" class="form-control inst-amount" value="${amount}" min="1" required>
+                            </div>
+                        </td>
+                        <td>
+                            <select name="installments[${i}][status]" class="form-select form-select-sm inst-status">
+                                <option value="pending" ${i > 1 ? 'selected' : ''}>Pending</option>
+                                <option value="paid" ${i === 1 ? 'selected' : ''}>Paid (Down Payment)</option>
+                            </select>
+                        </td>
+                        <td>
+                        <input type="text" name="installments[${i}][payment_method]" class="form-control inst-method" value="Cash" readonly>
+                        </td>
+                    </tr>
+                `;
+            }
+
+            $('#installmentScheduleBody').html(html);
+            checkInstallmentTotals();
+            if (window.lucide) lucide.createIcons();
+        }
+
+        function checkInstallmentTotals() {
+            let totalExpected = getSelectedPlanPrice();
+            let sum = 0;
+            $('.inst-amount').each(function() {
+                sum += parseFloat($(this).val()) || 0;
+            });
+            sum = Math.round(sum * 100) / 100;
+
+            $('#installmentTotalSum').text('₹' + sum.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
+
+            let diff = Math.abs(sum - totalExpected);
+            if (diff < 0.05) {
+                $('#installmentTotalMatchBadge').removeClass('bg-danger bg-warning').addClass('bg-success').text('Matched');
+            } else if (sum < totalExpected) {
+                $('#installmentTotalMatchBadge').removeClass('bg-success').addClass('bg-warning').text('Under by ₹' + (totalExpected - sum).toFixed(2));
+            } else {
+                $('#installmentTotalMatchBadge').removeClass('bg-success').addClass('bg-danger').text('Exceeds by ₹' + (sum - totalExpected).toFixed(2));
+            }
+        }
+
+        // Events for recalculating installments
+        $(document).on('input', '.inst-amount', function() {
+            checkInstallmentTotals();
+        });
+
+        $('#btnRegenerateSchedule, #installmentCount, #installmentFrequency, #firstDueDate').on('change click', function(e) {
+            if (e.type === 'click' && $(this).attr('id') !== 'btnRegenerateSchedule') return;
+            generateInstallmentSchedule();
+        });
+
+        // Plan change handler (native and TomSelect)
+        $(document).on('change', '#select-plan', function() {
+            updatePlanPriceDisplay();
+        });
+
+        // Hook into TomSelect instance if available
+        let planElem = document.getElementById('select-plan');
+        if (planElem && planElem.tomselect) {
+            planElem.tomselect.on('change', function() {
+                updatePlanPriceDisplay();
+            });
+        }
+
+        // Check on initial page load
+        setTimeout(function() {
+            let pElem = document.getElementById('select-plan');
+            if (pElem && pElem.tomselect) {
+                pElem.tomselect.on('change', function() {
+                    updatePlanPriceDisplay();
+                });
+            }
+            updatePlanPriceDisplay();
+
+            <?php if (!empty($existingPayment)): ?>
+            // ---- Edit mode: existing payment pre-load ----
+            var existPayType  = <?= json_encode($existingPayment['payment_type'] ?? 'full') ?>;
+            var existInsts    = <?= json_encode(array_values($existingInstallments)) ?>;
+
+            // 1. Pre-check correct radio
+            if (existPayType === 'installment') {
+                $('#payTypeInstallment').prop('checked', true);
+                $('#payTypeFull').prop('checked', false);
+                $('.payment-full-fields').addClass('d-none');
+                $('#installmentConfigBox').removeClass('d-none');
+
+                // 2. Load existing installment rows
+                if (existInsts && existInsts.length > 0) {
+                    var html = '';
+                    $.each(existInsts, function(idx, inst) {
+                        var i = parseInt(inst.installment_no);
+                        var isPaid = (inst.status === 'paid');
+                        html += '<tr class="installment-row" data-index="' + i + '">';
+                        html += '<td class="text-center fw-bold fs-12">' + i + '</td>';
+                        if (isPaid) {
+                            // Paid row: show label only, no editable inputs
+                            html += '<td><span class="text-muted">' + (inst.due_date || '-') + '</span><input type="hidden" name="installments[' + i + '][due_date]" value="' + (inst.due_date || '') + '"></td>';
+                            html += '<td>';
+                            html += '  <div class="input-group input-group-sm"><span class="input-group-text">₹</span>';
+                            html += '  <input type="number" step="0.01" name="installments[' + i + '][amount]" class="form-control inst-amount" value="' + parseFloat(inst.amount).toFixed(2) + '" readonly></div>';
+                            html += '</td>';
+                            html += '<td><span class="badge bg-success">Paid</span><input type="hidden" name="installments[' + i + '][status]" value="paid"></td>';
+                            html += '<td><span class="text-muted">' + (inst.payment_method || '-') + '</span><input type="hidden" name="installments[' + i + '][payment_method]" value="' + (inst.payment_method || 'Cash') + '"></td>';
+                        } else {
+                            // Pending row: editable
+                            html += '<td><input type="date" name="installments[' + i + '][due_date]" class="form-control form-control-sm inst-due-date" value="' + (inst.due_date || '') + '" required></td>';
+                            html += '<td><div class="input-group input-group-sm"><span class="input-group-text">₹</span><input type="number" step="0.01" name="installments[' + i + '][amount]" class="form-control inst-amount" value="' + parseFloat(inst.amount).toFixed(2) + '" min="1" required></div></td>';
+                            html += '<td><select name="installments[' + i + '][status]" class="form-select form-select-sm inst-status"><option value="pending" selected>Pending</option><option value="paid">Paid</option></select></td>';
+                            html += '<td><select name="installments[' + i + '][payment_method]" class="form-select form-select-sm inst-method">';
+                            html += '<option value="Cash" ' + (inst.payment_method==='Cash'?'selected':'') + '>Cash</option>';
+                            html += '<option value="UPI" '  + (inst.payment_method==='UPI'?'selected':'')  + '>UPI</option>';
+                            html += '<option value="Bank Transfer" ' + (inst.payment_method==='Bank Transfer'?'selected':'') + '>Bank Transfer</option>';
+                            html += '<option value="Cheque" ' + (inst.payment_method==='Cheque'?'selected':'') + '>Cheque</option>';
+                            html += '</select></td>';
+                        }
+                        html += '</tr>';
+                    });
+                    $('#installmentScheduleBody').html(html);
+                    checkInstallmentTotals();
+                    if (window.lucide) lucide.createIcons();
+                }
+            } else {
+                // Full payment - radio already default full, nothing extra needed
+                $('#payTypeFull').prop('checked', true);
+            }
+            <?php endif; ?>
+
+        }, 300);
     });
 </script>
+
 </body>
 </html>

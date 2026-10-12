@@ -18,9 +18,66 @@ if ($currentUserType === 'user') {
 include 'include/header.php';
 
 if ($isSuperadmin) {
-    // ----------------------------------------------------
-    // SUPERADMIN PLATFORM METRICS & DATA
-    // ----------------------------------------------------
+    $recentInstallments = db_rows("
+      SELECT 
+          cpi.*,
+          c.name as company_name,
+          c.plan_id,
+          p.name AS plan_name
+      FROM company_subscription_payment cpi
+      LEFT JOIN company c 
+          ON c.id = cpi.company_id
+      LEFT JOIN company_subscription_plan csp 
+          ON csp.id = cpi.company_subscription_plan_id
+      LEFT JOIN plan p 
+          ON p.id = csp.plan_id
+      ORDER BY cpi.id DESC
+      LIMIT 10
+  ");
+    $upcomingInstallments = db_rows("
+        SELECT
+            i.id,
+            i.company_id,
+            i.installment_no,
+            i.amount,
+            i.paid_amount,
+            i.due_date,
+            i.status,
+            c.name AS company_name,
+            p.name AS plan_name,
+            DATEDIFF(i.due_date, CURDATE()) AS days_until_due
+        FROM company_subscription_installment i
+        JOIN company c ON c.id = i.company_id
+        LEFT JOIN company_subscription_plan csp
+            ON csp.id = i.company_subscription_plan_id
+        LEFT JOIN plan p ON p.id = csp.plan_id
+        WHERE i.status IN ('pending', 'partial')
+          AND i.amount > i.paid_amount
+          AND i.due_date BETWEEN CURDATE() AND DATE_ADD(CURDATE(), INTERVAL 30 DAY)
+        ORDER BY i.due_date ASC, c.name ASC, i.installment_no ASC
+    ");
+    $overdueInstallments = db_rows("
+        SELECT
+            i.id,
+            i.company_id,
+            i.installment_no,
+            i.amount,
+            i.paid_amount,
+            i.due_date,
+            i.status,
+            c.name AS company_name,
+            p.name AS plan_name,
+            DATEDIFF(CURDATE(), i.due_date) AS days_overdue
+        FROM company_subscription_installment i
+        JOIN company c ON c.id = i.company_id
+        LEFT JOIN company_subscription_plan csp
+            ON csp.id = i.company_subscription_plan_id
+        LEFT JOIN plan p ON p.id = csp.plan_id
+        WHERE i.status IN ('pending', 'partial', 'overdue')
+          AND i.amount > i.paid_amount
+          AND i.due_date < CURDATE()
+        ORDER BY i.due_date ASC, c.name ASC, i.installment_no ASC
+    ");
     $compStats = db_row("SELECT COUNT(*) as total, SUM(CASE WHEN status = 1 THEN 1 ELSE 0 END) as active FROM company");
     $totalCompanies = (int)($compStats['total'] ?? 0);
     $activeCompanies = (int)($compStats['active'] ?? 0);
@@ -114,13 +171,6 @@ if ($isSuperadmin) {
 }
 
 ?>
-<!-- ==========================================
-     SUPERADMIN CUSTOM THEME-INTEGRATED DASHBOARD
-=========================================== -->
-<!-- ==========================================
-     SUPERADMIN CUSTOM THEME-INTEGRATED DASHBOARD
-=========================================== -->
-<!-- 1. Hero Welcome & Quick Action Banner (Theme Primary Gradient) -->
 <div class="super-hero-banner text-white p-4 p-md-4 mb-4">
   <div class="row align-items-center position-relative" style="z-index: 2;">
     <div class="col-lg-8 mb-3 mb-lg-0">
@@ -128,7 +178,7 @@ if ($isSuperadmin) {
         <span class="badge rounded-pill bg-white text-dark fw-bold fs-11 px-2 py-1">SUPERADMIN</span>
         <span class="fs-12 text-white-50">Multi-Tenant Platform Control</span>
       </div>
-      <h3 class="fw-bold mb-1 text-white">System Command Center</h3>
+      <h3 class="fw-bold mb-1 text-white">Welcome back Superadmin</h3>
       <p class="mb-0 text-white-50 fs-13" style="max-width: 620px;">
         Monitor tenant businesses, subscription tiers, platform licenses, and active enterprise modules with unified theme intelligence.
       </p>
@@ -367,7 +417,128 @@ if ($isSuperadmin) {
   </div>
 </div>
 
-<!-- 4. Unified SaaS Command Center: Leads & Pipeline (Col 8) + Plans & Reminders (Col 4) -->
+<div class="row g-3 mb-4 align-items-stretch">
+  <div class="col-xl-6 d-flex flex-column">
+    <div class="card border-0 shadow-sm rounded-4 h-100">
+      <div class="card-header theme-card-header py-3 px-4 d-flex align-items-center justify-content-between">
+        <h6 class="mb-0 fw-bold text-dark d-flex align-items-center gap-2">
+          <i data-lucide="calendar-clock" class="fs-18 text-primary"></i>
+          Next Installments (Next 30 Days)
+        </h6>
+        <span class="badge rounded-pill bg-primary-subtle text-primary"><?= count($upcomingInstallments) ?> Due</span>
+      </div>
+      <div class="card-body p-0">
+        <div class="table-responsive">
+          <table class="table table-hover align-middle mb-0 superadmin-table">
+            <thead>
+              <tr>
+                <th class="ps-3 py-3">Company / Plan</th>
+                <th>Installment</th>
+                <th>Due Date</th>
+                <th>Pending</th>
+                <th class="text-end pe-3">History</th>
+              </tr>
+            </thead>
+            <tbody class="fs-13">
+              <?php if (!empty($upcomingInstallments)): ?>
+                <?php foreach ($upcomingInstallments as $installment):
+                  $daysUntilDue = (int)$installment['days_until_due'];
+                  $pendingAmount = max(0, (float)$installment['amount'] - (float)$installment['paid_amount']);
+                ?>
+                  <tr>
+                    <td class="ps-3 py-3">
+                      <div class="fw-semibold text-dark"><?= htmlspecialchars($installment['company_name'] ?? '-') ?></div>
+                      <small class="text-muted"><?= htmlspecialchars($installment['plan_name'] ?? 'Custom') ?></small>
+                    </td>
+                    <td>#<?= (int)$installment['installment_no'] ?></td>
+                    <td>
+                      <div class="fw-medium"><?= date('d M Y', strtotime($installment['due_date'])) ?></div>
+                      <small class="text-primary">
+                        <?= $daysUntilDue === 0 ? 'Due today' : $daysUntilDue . ' day' . ($daysUntilDue === 1 ? '' : 's') . ' left' ?>
+                      </small>
+                    </td>
+                    <td class="fw-semibold text-danger">₹<?= number_format($pendingAmount, 2) ?></td>
+                    <td class="text-end pe-3">
+                      <button type="button"
+                        class="btn btn-xs btn-outline-primary py-1 px-2 view-payment-history"
+                        data-company-id="<?= encrypt_id($installment['company_id']) ?>"
+                        data-company-name="<?= htmlspecialchars($installment['company_name'] ?? '-', ENT_QUOTES) ?>"
+                        title="View Payment History">
+                        <i data-lucide="eye" class="fs-13"></i>
+                      </button>
+                    </td>
+                  </tr>
+                <?php endforeach; ?>
+              <?php else: ?>
+                <tr><td colspan="5" class="text-center py-4 text-muted">No installments are due in the next 30 days.</td></tr>
+              <?php endif; ?>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-xl-6 d-flex flex-column">
+    <div class="card border-0 shadow-sm rounded-4 h-100">
+      <div class="card-header theme-card-header py-3 px-4 d-flex align-items-center justify-content-between">
+        <h6 class="mb-0 fw-bold text-dark d-flex align-items-center gap-2">
+          <i data-lucide="triangle-alert" class="fs-18 text-danger"></i>
+          Overdue Installments
+        </h6>
+        <span class="badge rounded-pill bg-danger-subtle text-danger"><?= count($overdueInstallments) ?> Overdue</span>
+      </div>
+      <div class="card-body p-0">
+        <div class="table-responsive">
+          <table class="table table-hover align-middle mb-0 superadmin-table">
+            <thead>
+              <tr>
+                <th class="ps-3 py-3">Company / Plan</th>
+                <th>Installment</th>
+                <th>Due Date</th>
+                <th>Pending</th>
+                <th class="text-end pe-3">History</th>
+              </tr>
+            </thead>
+            <tbody class="fs-13">
+              <?php if (!empty($overdueInstallments)): ?>
+                <?php foreach ($overdueInstallments as $installment):
+                  $daysOverdue = (int)$installment['days_overdue'];
+                  $pendingAmount = max(0, (float)$installment['amount'] - (float)$installment['paid_amount']);
+                ?>
+                  <tr class="table-danger-subtle">
+                    <td class="ps-3 py-3">
+                      <div class="fw-semibold text-dark"><?= htmlspecialchars($installment['company_name'] ?? '-') ?></div>
+                      <small class="text-muted"><?= htmlspecialchars($installment['plan_name'] ?? 'Custom') ?></small>
+                    </td>
+                    <td>#<?= (int)$installment['installment_no'] ?></td>
+                    <td>
+                      <div class="fw-medium"><?= date('d M Y', strtotime($installment['due_date'])) ?></div>
+                      <small class="text-danger"><?= $daysOverdue ?> day<?= $daysOverdue === 1 ? '' : 's' ?> overdue</small>
+                    </td>
+                    <td class="fw-semibold text-danger">₹<?= number_format($pendingAmount, 2) ?></td>
+                    <td class="text-end pe-3">
+                      <button type="button"
+                        class="btn btn-xs btn-outline-danger py-1 px-2 view-payment-history"
+                        data-company-id="<?= encrypt_id($installment['company_id']) ?>"
+                        data-company-name="<?= htmlspecialchars($installment['company_name'] ?? '-', ENT_QUOTES) ?>"
+                        title="View Payment History">
+                        <i data-lucide="eye" class="fs-13"></i>
+                      </button>
+                    </td>
+                  </tr>
+                <?php endforeach; ?>
+              <?php else: ?>
+                <tr><td colspan="5" class="text-center py-4 text-muted">No overdue installments.</td></tr>
+              <?php endif; ?>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
 <div class="row g-3 mb-4 align-items-stretch">
   <!-- Left Side: Recent SaaS Leads & Pipeline (Col 8) -->
   <div class="col-xl-8 col-lg-7 d-flex flex-column">
@@ -556,8 +727,11 @@ if ($isSuperadmin) {
         <?php endif; ?>
       </div>
     </div>
+  </div>
+</div>
 
-    <!-- 3. Quick Navigation Hub -->
+<div class="row g-3 mb-4 align-items-stretch">
+  <div class="col-xl-4 col-lg-5 d-flex flex-column gap-3">
     <div class="card border-0 shadow-sm rounded-4">
       <div class="card-header theme-card-header py-3">
         <h6 class="mb-0 fw-bold text-dark d-flex align-items-center gap-2">
@@ -601,6 +775,317 @@ if ($isSuperadmin) {
       </div>
     </div>
   </div>
+  <div class="col-xl-8 col-lg-7 d-flex flex-column">
+    <div class="card border-0 shadow-sm rounded-4 h-100 w-100 d-flex flex-column">
+      <div class="card-header theme-card-header py-3 px-4 d-flex align-items-center justify-content-between flex-wrap gap-2">
+        <div class="d-flex align-items-center gap-2">
+          <div class="avatar avatar-xs rounded bg-warning-subtle text-warning d-flex align-items-center justify-content-center"
+              style="width:34px;height:34px;">
+            <i data-lucide="credit-card" class="fs-18"></i>
+          </div>
+          <div>
+            <h6 class="mb-0 fw-bold text-dark">
+              Company Installment History
+            </h6>
+            <small class="text-muted">
+              Recent company plan payments
+            </small>
+          </div>
+        </div>
+      </div>
+      <div class="card-body p-0 flex-grow-1">
+        <div class="table-responsive">
+          <table class="table table-hover align-middle mb-0 superadmin-table">
+            <thead>
+              <tr>
+                <th class="ps-3 py-3">Company</th>
+                <th>Plan</th>
+                <th>Amount</th>
+                <th>Payment Type</th>
+                <th>Paid</th>
+                <th>Remaining</th>
+                <th>Status</th>
+                <th class="text-end pe-3">Action</th>
+              </tr>
+            </thead>
+            <tbody class="fs-13">
+            <?php if (!empty($recentInstallments)): ?>
+              <?php foreach ($recentInstallments as $ri): 
+                $amount = (float)($ri['total_amount'] ?? 0);
+                $paid   = (float)($ri['paid_amount'] ?? 0);
+                $remaining = max(0, $amount - $paid);
+                $status = strtolower($ri['payment_status'] ?? 'pending');
+                if ($status === 'paid') {
+                    $statusBadge = 'bg-success-subtle text-success border border-success-subtle';
+                    $statusText = 'Paid';
+                }
+                elseif ($status === 'partial') {
+                    $statusBadge = 'bg-warning-subtle text-warning border border-warning-subtle';
+                    $statusText = 'Partial';
+                }
+                else {
+                    $statusBadge = 'bg-secondary-subtle text-secondary border border-secondary-subtle';
+                    $statusText = 'Pending';
+                }
+                $encCompanyId = encrypt_id($ri['company_id']);
+              ?>
+              <tr>
+                <td class="ps-3 py-3">
+                  <div class="fw-semibold text-dark">
+                    <?= htmlspecialchars($ri['company_name'] ?? '-') ?>
+                  </div>
+                </td>
+                <td>
+                  <span class="badge bg-light text-dark border px-2 py-1">
+                    <?= htmlspecialchars($ri['plan_name'] ?? 'Custom') ?>
+                  </span>
+                </td>
+                <td class="fw-semibold text-dark">
+                  ₹<?= number_format($amount, 2) ?>
+                </td>
+                <td>
+                  <span class="badge bg-light text-dark border px-2 py-1">
+                    <?= htmlspecialchars($ri['payment_type'] ?? '') ?>
+                  </span>
+                </td>
+                <td class="text-success fw-semibold">
+                  ₹<?= number_format($paid, 2) ?>
+                </td>
+                <td class="<?= $remaining > 0 ? 'text-danger fw-semibold' : 'text-info fw-semibold' ?>">
+                  ₹<?= number_format($remaining, 2) ?>
+                </td>
+                <td>
+                  <span class="badge px-2 py-1 fs-11 <?= $statusBadge ?>">
+                    <?= htmlspecialchars($statusText) ?>
+                  </span>
+                </td>
+                <td class="text-end pe-3">
+                  <div class="d-inline-flex gap-1">
+                    <button type="button"
+                      class="btn btn-xs btn-outline-primary py-1 px-2 view-payment-history"
+                      data-company-id="<?= $encCompanyId ?>"
+                      data-company-name="<?= htmlspecialchars($ri['company_name'] ?? '-', ENT_QUOTES) ?>"
+                      title="View Payment History">
+                      <i data-lucide="eye" class="fs-13"></i>
+                  </button>
+                  </div>
+                </td>
+              </tr>
+            <?php endforeach; ?>
+            <?php else: ?>
+              <tr>
+                <td colspan="9" class="text-center py-4 text-muted">
+                  No installment payment history found.
+                </td>
+              </tr>
+            <?php endif; ?>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" id="paymentHistoryModal" tabindex="-1" aria-hidden="true">
+
+    <div class="modal-dialog modal-xl modal-dialog-centered">
+
+        <div class="modal-content border-0 shadow-lg rounded-4">
+
+            <div class="modal-header theme-card-header px-4 py-3">
+
+                <div>
+                    <h5 class="modal-title fw-bold text-dark mb-1">
+                        Company Payment History
+                    </h5>
+
+                    <small class="text-muted" id="paymentCompanyName">
+                        -
+                    </small>
+                </div>
+
+                <button type="button"
+                        class="btn-close"
+                        data-bs-dismiss="modal"
+                        aria-label="Close">
+                </button>
+
+            </div>
+
+
+            <div class="modal-body p-0">
+
+                <div id="paymentHistoryLoader"
+                     class="text-center py-5">
+
+                    <div class="spinner-border text-primary"
+                         role="status">
+                    </div>
+
+                    <div class="mt-2 text-muted">
+                        Loading payment history...
+                    </div>
+
+                </div>
+
+
+                <div id="paymentHistoryContent"
+                     class="d-none">
+
+                    <!-- Summary -->
+                    <div class="row g-3 p-4 pb-3">
+
+                        <div class="col-md-4">
+                            <div class="card border-0 bg-light rounded-3">
+                                <div class="card-body">
+                                    <small class="text-muted">
+                                        Total Amount
+                                    </small>
+
+                                    <h5 class="mb-0 fw-bold"
+                                        id="historyTotalAmount">
+                                        ₹0.00
+                                    </h5>
+                                </div>
+                            </div>
+                        </div>
+
+
+                        <div class="col-md-4">
+                            <div class="card border-0 bg-success-subtle rounded-3">
+                                <div class="card-body">
+                                    <small class="text-success">
+                                        Total Paid
+                                    </small>
+
+                                    <h5 class="mb-0 fw-bold text-success"
+                                        id="historyPaidAmount">
+                                        ₹0.00
+                                    </h5>
+                                </div>
+                            </div>
+                        </div>
+
+
+                        <div class="col-md-4">
+                            <div class="card border-0 bg-danger-subtle rounded-3">
+                                <div class="card-body">
+                                    <small class="text-danger">
+                                        Total Pending
+                                    </small>
+
+                                    <h5 class="mb-0 fw-bold text-danger"
+                                        id="historyPendingAmount">
+                                        ₹0.00
+                                    </h5>
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
+
+
+                    <!-- History Table -->
+                    <div class="table-responsive px-4 pb-4">
+
+                        <table class="table table-hover align-middle mb-0">
+
+                            <thead>
+                                <tr>
+                                    <th>Sr.</th>
+                                    <th>Installment</th>
+                                    <th>Due Date</th>
+                                    <th>Amount</th>
+                                    <th>Paid</th>
+                                    <th>Payment Date</th>
+                                    <th>Payment Type</th>
+                                    <th>Remaining</th>
+                                    <th>Status</th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
+
+                            <tbody id="paymentHistoryTableBody">
+                            </tbody>
+
+                        </table>
+
+                    </div>
+
+                </div>
+
+
+                <div id="paymentHistoryError"
+                     class="d-none text-center text-danger py-5">
+
+                    Unable to load payment history.
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+<div class="modal fade" id="dashboardPayInstallmentModal" tabindex="-1" aria-labelledby="dashboardPayInstallmentModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header border-bottom">
+        <h5 class="modal-title fs-16 fw-semibold mb-0" id="dashboardPayInstallmentModalLabel">Record Installment Payment</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <form id="dashboardPayInstallmentForm">
+        <input type="hidden" name="action" value="pay_installment">
+        <input type="hidden" name="installment_id" id="dashboardPayInstallmentId" value="">
+        <input type="hidden" name="company_id" id="dashboardPayCompanyId" value="">
+        <div class="modal-body p-4">
+          <div class="alert alert-light border rounded-3 p-3 mb-3 bg-light-subtle">
+            <div class="row g-2 fs-13">
+              <div class="col-6"><strong>Company:</strong> <span id="dashboardPayCompanyName">-</span></div>
+              <div class="col-6"><strong>Installment:</strong> <span id="dashboardPayInstallmentNo">-</span></div>
+              <div class="col-6"><strong>Due Date:</strong> <span id="dashboardPayDueDate">-</span></div>
+              <div class="col-6"><strong>Pending Amount:</strong> <span class="badge bg-primary fs-12" id="dashboardPayPendingAmount">₹0.00</span></div>
+            </div>
+          </div>
+          <div class="row g-3">
+            <div class="col-md-6">
+              <label class="form-label fs-12 fw-semibold">Paying Amount (₹)</label>
+              <input type="number" step="0.01" name="pay_amount" id="dashboardPayAmount" class="form-control" min="0.01" required>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fs-12 fw-semibold">Payment Date</label>
+              <input type="date" name="payment_date" class="form-control" value="<?= date('Y-m-d') ?>" required>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fs-12 fw-semibold">Payment Method</label>
+              <select name="payment_method" class="form-select" required>
+                <option value="Cash">Cash</option>
+              </select>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fs-12 fw-semibold">Transaction / Cheque No.</label>
+              <input type="text" name="transaction_no" class="form-control" placeholder="e.g. UPI Ref / Cheque No">
+            </div>
+            <div class="col-12">
+              <label class="form-label fs-12 fw-semibold">Remarks (Optional)</label>
+              <textarea name="remarks" class="form-control" rows="2" placeholder="Payment received details..."></textarea>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer border-top py-2 px-3">
+          <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-success px-4" id="dashboardPaySubmit">
+            <span id="dashboardPaySubmitText">Confirm Payment</span>
+            <span id="dashboardPaySubmitLoader" class="spinner-border spinner-border-sm d-none"></span>
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
 </div>
 
 <?php
@@ -608,6 +1093,206 @@ include 'include/footer.php';
 ?>
 
 <script>
+
+  $(document).on('click', '.dashboard-pay-installment', function () {
+    const $button = $(this);
+    const amount = parseFloat($button.data('amount')) || 0;
+
+    $('#dashboardPayInstallmentId').val($button.data('installment-id'));
+    $('#dashboardPayCompanyId').val($button.data('company-id'));
+    $('#dashboardPayCompanyName').text($('#paymentCompanyName').text() || '-');
+    $('#dashboardPayInstallmentNo').text('Installment #' + $button.data('installment-no'));
+    $('#dashboardPayDueDate').text($button.data('due-date') || '-');
+    $('#dashboardPayPendingAmount').text('₹' + amount.toFixed(2));
+    $('#dashboardPayAmount').attr('max', amount.toFixed(2)).val(amount.toFixed(2));
+    $('#dashboardPayInstallmentForm [name="transaction_no"], #dashboardPayInstallmentForm [name="remarks"]').val('');
+
+    bootstrap.Modal.getOrCreateInstance(document.getElementById('dashboardPayInstallmentModal')).show();
+    if (typeof lucide !== 'undefined') {
+      lucide.createIcons();
+    }
+  });
+
+  $('#dashboardPayInstallmentForm').on('submit', function (e) {
+    e.preventDefault();
+    const $button = $('#dashboardPaySubmit');
+    const amount = parseFloat($('#dashboardPayAmount').val()) || 0;
+    const maxAmount = parseFloat($('#dashboardPayAmount').attr('max')) || 0;
+    if (amount <= 0 || amount > maxAmount) {
+      showToast('Payment amount must be greater than zero and no more than the pending amount.', 'error');
+      return;
+    }
+
+    $button.prop('disabled', true);
+    $('#dashboardPaySubmitText').addClass('d-none');
+    $('#dashboardPaySubmitLoader').removeClass('d-none');
+
+    $.ajax({
+      url: '<?= SITE_URL ?>admin/setting/company/subscription_action.php',
+      type: 'POST',
+      data: $(this).serialize(),
+      dataType: 'json',
+      success: function (response) {
+        if (response.status) {
+          showToast(response.message || 'Payment recorded successfully.', 'success');
+          bootstrap.Modal.getInstance(document.getElementById('dashboardPayInstallmentModal')).hide();
+          setTimeout(function () {
+            window.location.reload();
+          }, 600);
+        } else {
+          showToast(response.message || 'Payment could not be recorded.', 'error');
+        }
+      },
+      error: function (xhr) {
+        console.error(xhr.responseText);
+        showToast('Server error while saving payment.', 'error');
+      },
+      complete: function () {
+        $button.prop('disabled', false);
+        $('#dashboardPaySubmitText').removeClass('d-none');
+        $('#dashboardPaySubmitLoader').addClass('d-none');
+      }
+    });
+  });
+
+  $(document).on('click', '.view-payment-history', function () {
+    const companyId   = $(this).data('company-id');
+    const companyName = $(this).data('company-name');
+    $('#paymentCompanyName').text(companyName);
+    $('#paymentHistoryLoader').removeClass('d-none');
+    $('#paymentHistoryContent').addClass('d-none');
+    $('#paymentHistoryError').addClass('d-none');
+    $('#paymentHistoryTableBody').html('');
+    const modal = new bootstrap.Modal(
+        document.getElementById('paymentHistoryModal')
+    );
+    modal.show();
+    $.ajax({
+        url: '<?= SITE_URL ?>admin/setting/company/subscription_action.php?action=payment-history',
+        type: 'POST',
+        dataType: 'json',
+        data: {
+            company_id: companyId
+        },
+        success: function (response) {
+            $('#paymentHistoryLoader').addClass('d-none');
+            if (!response.success) {
+                $('#paymentHistoryError')
+                    .removeClass('d-none')
+                    .text(response.message || 'Payment history not found.');
+                return;
+            }
+            $('#historyTotalAmount').text(
+                '₹' + Number(response.summary.total_amount).toLocaleString('en-IN', {
+                    minimumFractionDigits: 2
+                })
+            );
+            $('#historyPaidAmount').text(
+                '₹' + Number(response.summary.paid_amount).toLocaleString('en-IN', {
+                    minimumFractionDigits: 2
+                })
+            );
+            $('#historyPendingAmount').text(
+                '₹' + Number(response.summary.pending_amount).toLocaleString('en-IN', {
+                    minimumFractionDigits: 2
+                })
+            );
+            let html = '';
+            if (response.history.length > 0) {
+                $.each(response.history, function (index, row) {
+                    let amount = Number(row.amount || 0);
+                    let paid = Number(row.paid_amount || 0);
+                    let remaining = Math.max(0, amount - paid);
+                    let status = (row.status || 'pending').toLowerCase();
+                    let badgeClass = 'bg-secondary-subtle text-secondary';
+                    if (status === 'paid') {
+                        badgeClass = 'bg-success-subtle text-success';
+                    } 
+                    else if (status === 'partial') {
+                        badgeClass = 'bg-warning-subtle text-warning';
+                    }
+                    else if (status === 'overdue') {
+                        badgeClass = 'bg-danger-subtle text-danger';
+                    }
+                    let statusText = status.charAt(0).toUpperCase() + status.slice(1);
+                    html += `
+                        <tr>
+                            <td>${index + 1}</td>
+                            <td>
+                                <span class="fw-semibold">
+                                    ${row.installment_no ?? '-'}
+                                </span>
+                            </td>
+                            <td>
+                                ${row.due_date ?? '-'}
+                            </td>
+                            <td class="fw-semibold">
+                                ₹${amount.toLocaleString('en-IN', {
+                                    minimumFractionDigits: 2
+                                })}
+                            </td>
+                            <td class="text-success fw-semibold">
+                                ₹${paid.toLocaleString('en-IN', {
+                                    minimumFractionDigits: 2
+                                })}
+                            </td>
+                            <td>
+                                ${row.paid_date ?? '-'}
+                            </td>
+                            <td>
+                                <span class="badge bg-light text-dark border">
+                                    ${row.payment_method ?? '-'}
+                                </span>
+                            </td>
+                            <td class="text-danger fw-semibold">
+                                ₹${remaining.toLocaleString('en-IN', {
+                                    minimumFractionDigits: 2
+                                })}
+                            </td>
+                            <td>
+                                <span class="badge px-2 py-1 ${badgeClass}">
+                                    ${statusText}
+                                </span>
+                            </td>
+                            <td>
+                                ${remaining > 0 ? `
+                                    <button type="button"
+                                        class="btn btn-success btn-sm py-1 px-2 dashboard-pay-installment"
+                                        data-installment-id="${Number(row.id)}"
+                                        data-company-id="${Number(row.company_id)}"
+                                        data-installment-no="${Number(row.installment_no)}"
+                                        data-amount="${remaining.toFixed(2)}"
+                                        data-due-date="${$('<div>').text(row.due_date || '-').html()}">
+                                        <i data-lucide="wallet" class="fs-12 align-middle me-1"></i> Pay Now
+                                    </button>
+                                ` : '<span class="text-success fs-12 fw-semibold">Paid</span>'}
+                            </td>
+                        </tr>
+                    `;
+                });
+            } else {
+                html = `
+                    <tr>
+                        <td colspan="10"
+                            class="text-center py-4 text-
+                            ">
+                            No payment history found.
+                        </td>
+                    </tr>
+                `;
+            }
+
+            $('#paymentHistoryTableBody').html(html);
+            $('#paymentHistoryContent').removeClass('d-none');
+        },
+        error: function () {
+            $('#paymentHistoryLoader').addClass('d-none');
+            $('#paymentHistoryError').removeClass('d-none').text('Something went wrong while loading payment history.');
+        }
+    });
+
+});
+
 document.addEventListener('DOMContentLoaded', function () {
   if (typeof lucide !== 'undefined') {
     lucide.createIcons();

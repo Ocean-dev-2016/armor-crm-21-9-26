@@ -537,6 +537,97 @@ if ($plan_id > 0 && !empty($company_id)) {
                                 NOW()
                             )";
             db_query($insertSubSql);
+            $cspId = db_insert_id();
+
+            // -------------------------------------------------------------
+            // RECORD PAYMENT & INSTALLMENTS - Only for NEW company
+            // -------------------------------------------------------------
+            if ($id <= 0 && $cspId > 0) {
+                $totalPlanPrice = (float)($subPlanRow['price'] ?? 0);
+                $paymentType = trim($_POST['payment_type'] ?? 'full');
+
+                if ($paymentType === 'installment' && !empty($_POST['installments']) && is_array($_POST['installments'])) {
+                    $paidSum = 0;
+                    $pendingSum = 0;
+                    $postedInstallments = $_POST['installments'];
+
+                    foreach ($postedInstallments as $inst) {
+                        $instAmt = (float)($inst['amount'] ?? 0);
+                        $instStatus = trim($inst['status'] ?? 'pending');
+                        if ($instStatus === 'paid') {
+                            $paidSum += $instAmt;
+                        } else {
+                            $pendingSum += $instAmt;
+                        }
+                    }
+
+                    $pStatus = ($paidSum >= $totalPlanPrice && $totalPlanPrice > 0) ? 'paid' : ($paidSum > 0 ? 'partial' : 'pending');
+
+                    $insPaySql = "INSERT INTO company_subscription_payment (
+                        company_subscription_plan_id, company_id, invoice_no,
+                        total_amount, paid_amount, pending_amount,
+                        payment_type, payment_status, created_by, created_at, updated_at
+                    ) VALUES (
+                        $cspId, $company_id, NULL,
+                        $totalPlanPrice, $paidSum, $pendingSum,
+                        'installment', '$pStatus', $userId, NOW(), NOW()
+                    )";
+                    db_query($insPaySql);
+                    $paymentId = db_insert_id();
+
+                    $instNo = 1;
+                    foreach ($postedInstallments as $inst) {
+                        $instAmt = (float)($inst['amount'] ?? 0);
+                        $dueDate = !empty($inst['due_date']) ? db_escape($inst['due_date']) : date('Y-m-d');
+                        $instStatus = trim($inst['status'] ?? 'pending');
+                        $method = !empty($inst['payment_method']) ? db_escape(trim($inst['payment_method'])) : 'Cash';
+                        $paidAmt = ($instStatus === 'paid') ? $instAmt : 0;
+                        $paidDateVal = ($instStatus === 'paid') ? "'" . date('Y-m-d') . "'" : "NULL";
+
+                        $insInstSql = "INSERT INTO company_subscription_installment (
+                            company_subscription_plan_id, company_id, payment_id,
+                            installment_no, amount, due_date,
+                            paid_amount, paid_date, payment_method,
+                            status, remarks, created_by, created_at, updated_at
+                        ) VALUES (
+                            $cspId, $company_id, $paymentId,
+                            $instNo, $instAmt, '$dueDate',
+                            $paidAmt, $paidDateVal, '$method',
+                            '$instStatus', NULL, $userId, NOW(), NOW()
+                        )";
+                        db_query($insInstSql);
+                        $instNo++;
+                    }
+                } elseif ($paymentType === 'full') {
+                    $fullMethod = db_escape(trim($_POST['full_payment_method'] ?? 'UPI'));
+                    $fullTxnNo  = db_escape(trim($_POST['full_transaction_no'] ?? ''));
+
+                    $insPaySql = "INSERT INTO company_subscription_payment (
+                        company_subscription_plan_id, company_id, invoice_no,
+                        total_amount, paid_amount, pending_amount,
+                        payment_type, payment_status, created_by, created_at, updated_at
+                    ) VALUES (
+                        $cspId, $company_id, NULL,
+                        $totalPlanPrice, $totalPlanPrice, 0.00,
+                        'full', 'paid', $userId, NOW(), NOW()
+                    )";
+                    db_query($insPaySql);
+                    $paymentId = db_insert_id();
+
+                    $insInstSql = "INSERT INTO company_subscription_installment (
+                        company_subscription_plan_id, company_id, payment_id,
+                        installment_no, amount, due_date,
+                        paid_amount, paid_date, payment_method, transaction_no,
+                        status, remarks, created_by, created_at, updated_at
+                    ) VALUES (
+                        $cspId, $company_id, $paymentId,
+                        1, $totalPlanPrice, '$startDate',
+                        $totalPlanPrice, '$startDate', '$fullMethod', '$fullTxnNo',
+                        'paid', 'Full Payment Completed', $userId, NOW(), NOW()
+                    )";
+                    db_query($insInstSql);
+                }
+            }
         }
     }
 }

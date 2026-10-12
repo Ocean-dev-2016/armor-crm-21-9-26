@@ -49,4 +49,36 @@
 <?php
 include BASE_PATH . '/include/js.php';
 
+if (!empty($subscriptionPopup)):
 ?>
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+    const logoutUrl = "<?= SITE_URL ?>logout";
+    if (typeof Swal !== 'undefined') {
+        Swal.fire({
+            icon: 'warning',
+            title: '<?= addslashes($subscriptionPopup['title']) ?>',
+            html: '<div class="py-2"><p class="text-muted fs-15 mb-3"><?= addslashes($subscriptionPopup['message']) ?></p><div class="alert alert-danger py-2 px-3 mb-0 fs-14 fw-medium"><i data-lucide="phone-call" class="fs-16 align-middle me-1"></i> Please contact admin to continue using the services.</div></div>',
+            confirmButtonText: 'I Understand',
+            confirmButtonColor: '#e05260',
+            showCancelButton: false,
+            showCloseButton: false,
+            allowOutsideClick: false,
+            allowEscapeKey: false,
+            allowEnterKey: true,
+            backdrop: 'rgba(15, 23, 42, 0.92)',
+            customClass: {
+                popup: 'rounded-4 shadow-lg border-0',
+                title: 'text-dark fw-bold pt-2',
+                confirmButton: 'btn btn-danger px-4 py-2 rounded-3'
+            }
+        }).then(function(result) {
+            window.location.href = logoutUrl;
+        });
+    } else {
+        alert("<?= addslashes($subscriptionPopup['title']) ?>\n\n<?= addslashes($subscriptionPopup['message']) ?>\n\nPlease contact admin.");
+        window.location.href = logoutUrl;
+    }
+});
+</script>
+<?php endif; ?>

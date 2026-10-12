@@ -47,7 +47,7 @@ $leadFollowupTypes = db_rows("SELECT id, name FROM lead_followup_type WHERE stat
 
 <!-- MODAL 1: Convert Lead to Tenant Company (deal closed/won) -->
 <div class="modal fade" id="convertLeadModal" tabindex="-1" aria-labelledby="convertLeadModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
         <div class="modal-content">
             <div class="modal-header border-bottom">
                 <div class="d-flex align-items-center gap-2">
@@ -315,7 +315,6 @@ $(document).ready(function() {
         } else {
             $('#convertPlanId').val('');
         }
-
         let convModal = bootstrap.Modal.getOrCreateInstance(document.getElementById('convertLeadModal'));
         convModal.show();
         if (typeof lucide !== 'undefined') {

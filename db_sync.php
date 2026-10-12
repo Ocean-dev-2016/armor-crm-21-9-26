@@ -1101,6 +1101,73 @@ if (!is_dir($systemUploadDir)) {
     echo '<div class="log-item log-info">ℹ Directory `uploads/system/` already exists.</div>';
 }
 
+// -------------------------------------------------------------
+// Check & Create `company_subscription_payment` table
+// -------------------------------------------------------------
+if (!tableExists('company_subscription_payment')) {
+    $createPaymentSql = "CREATE TABLE `company_subscription_payment` (
+        `id` INT AUTO_INCREMENT PRIMARY KEY,
+        `company_subscription_plan_id` INT NOT NULL,
+        `company_id` INT NOT NULL,
+        `invoice_no` VARCHAR(50) DEFAULT NULL,
+        `total_amount` DECIMAL(12,2) NOT NULL DEFAULT 0.00,
+        `paid_amount` DECIMAL(12,2) NOT NULL DEFAULT 0.00,
+        `pending_amount` DECIMAL(12,2) NOT NULL DEFAULT 0.00,
+        `payment_type` ENUM('full','installment') NOT NULL DEFAULT 'full',
+        `payment_status` ENUM('pending','partial','paid','overdue','cancelled') NOT NULL DEFAULT 'pending',
+        `created_by` INT DEFAULT NULL,
+        `updated_by` INT DEFAULT NULL,
+        `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+        `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        KEY `idx_csp_id` (`company_subscription_plan_id`),
+        KEY `idx_company_id` (`company_id`)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4";
+    $q = mysqli_query($conn, $createPaymentSql);
+    if ($q) {
+        echo '<div class="log-item log-success">✓ Created table `company_subscription_payment` successfully.</div>';
+    } else {
+        echo '<div class="log-item log-error">✗ Failed to create table `company_subscription_payment`: ' . mysqli_error($conn) . '</div>';
+    }
+} else {
+    echo '<div class="log-item log-info">ℹ Table `company_subscription_payment` already exists.</div>';
+}
+
+// -------------------------------------------------------------
+// Check & Create `company_subscription_installment` table
+// -------------------------------------------------------------
+if (!tableExists('company_subscription_installment')) {
+    $createInstallmentSql = "CREATE TABLE `company_subscription_installment` (
+        `id` INT AUTO_INCREMENT PRIMARY KEY,
+        `company_subscription_plan_id` INT NOT NULL,
+        `company_id` INT NOT NULL,
+        `payment_id` INT DEFAULT 0,
+        `installment_no` INT NOT NULL,
+        `amount` DECIMAL(12,2) NOT NULL DEFAULT 0.00,
+        `due_date` DATE NOT NULL,
+        `paid_amount` DECIMAL(12,2) NOT NULL DEFAULT 0.00,
+        `paid_date` DATE DEFAULT NULL,
+        `payment_method` VARCHAR(50) DEFAULT NULL,
+        `transaction_no` VARCHAR(100) DEFAULT NULL,
+        `status` ENUM('pending','partial','paid','overdue','cancelled') NOT NULL DEFAULT 'pending',
+        `remarks` TEXT DEFAULT NULL,
+        `created_by` INT DEFAULT NULL,
+        `updated_by` INT DEFAULT NULL,
+        `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+        `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        KEY `idx_inst_csp_id` (`company_subscription_plan_id`),
+        KEY `idx_inst_company_id` (`company_id`),
+        KEY `idx_inst_payment_id` (`payment_id`)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4";
+    $q = mysqli_query($conn, $createInstallmentSql);
+    if ($q) {
+        echo '<div class="log-item log-success">✓ Created table `company_subscription_installment` successfully.</div>';
+    } else {
+        echo '<div class="log-item log-error">✗ Failed to create table `company_subscription_installment`: ' . mysqli_error($conn) . '</div>';
+    }
+} else {
+    echo '<div class="log-item log-info">ℹ Table `company_subscription_installment` already exists.</div>';
+}
+
 echo '<p class="mt-3 font-semibold text-green-700"><strong>Database synchronization completed successfully.</strong></p>';
 ?>
     <a href="<?= SITE_URL ?>login" class="btn">Go to CRM Home</a>
