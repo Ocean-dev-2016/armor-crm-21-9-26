@@ -132,6 +132,14 @@ $allPlans = db_rows("SELECT id, name, price, days FROM plan WHERE status = 1 ORD
                         <div id="setupInstallmentFields" class="d-none">
                             <div class="row g-2 mb-3">
                                 <div class="col-sm-4">
+                                    <label class="form-label fs-12 fw-semibold">Frequency</label>
+                                    <select id="setupInstallmentFrequency" class="form-select form-select-sm">
+                                        <option value="monthly" selected>Monthly (Max 12)</option>
+                                        <option value="quarterly">Quarterly (3 Months - Max 4)</option>
+                                        <option value="half_yearly">Half Yearly (6 Months - Max 2)</option>
+                                    </select>
+                                </div>
+                                <div class="col-sm-4">
                                     <label class="form-label fs-12 fw-semibold">No. of Installments</label>
                                     <select id="setupInstallmentCount" class="form-select form-select-sm">
                                         <option value="2">2 Installments</option>
@@ -140,14 +148,6 @@ $allPlans = db_rows("SELECT id, name, price, days FROM plan WHERE status = 1 ORD
                                         <option value="5">5 Installments</option>
                                         <option value="6">6 Installments</option>
                                         <option value="12">12 Installments</option>
-                                    </select>
-                                </div>
-                                <div class="col-sm-4">
-                                    <label class="form-label fs-12 fw-semibold">Frequency</label>
-                                    <select id="setupInstallmentFrequency" class="form-select form-select-sm">
-                                        <option value="monthly">Monthly</option>
-                                        <option value="quarterly">Quarterly</option>
-                                        <option value="half_yearly">Half Yearly</option>
                                     </select>
                                 </div>
                                 <div class="col-sm-4">
@@ -457,6 +457,49 @@ $(document).ready(function() {
         updateSetupInstallmentTotal();
     }
 
+    function updateSetupInstallmentCountOptions() {
+        let freq = $('#setupInstallmentFrequency').val();
+        let $countSelect = $('#setupInstallmentCount');
+        let currentVal = parseInt($countSelect.val(), 10) || 2;
+        let options = [];
+
+        if (freq === 'half_yearly') {
+            options = [
+                { val: 2, label: '2 Installments' }
+            ];
+        } else if (freq === 'quarterly') {
+            options = [
+                { val: 2, label: '2 Installments' },
+                { val: 3, label: '3 Installments' },
+                { val: 4, label: '4 Installments' }
+            ];
+        } else {
+            options = [
+                { val: 2, label: '2 Installments' },
+                { val: 3, label: '3 Installments' },
+                { val: 4, label: '4 Installments' },
+                { val: 5, label: '5 Installments' },
+                { val: 6, label: '6 Installments' },
+                { val: 12, label: '12 Installments' }
+            ];
+        }
+
+        let html = '';
+        let valExists = false;
+        options.forEach(function(opt) {
+            let selected = (opt.val === currentVal);
+            if (selected) valExists = true;
+            html += '<option value="' + opt.val + '" ' + (selected ? 'selected' : '') + '>' + opt.label + '</option>';
+        });
+
+        $countSelect.html(html);
+
+        if (!valExists) {
+            let defaultVal = options[options.length - 1].val;
+            $countSelect.val(defaultVal);
+        }
+    }
+
     function toggleSetupPaymentFields() {
         let installment = $('#setupPayTypeInstallment').is(':checked');
         $('#setupFullPaymentFields').toggleClass('d-none', installment);
@@ -464,12 +507,17 @@ $(document).ready(function() {
         $('#setupFullPaymentFields :input').prop('disabled', installment);
         $('#setupInstallmentFields :input').prop('disabled', !installment);
         if (installment) {
+            updateSetupInstallmentCountOptions();
             generateSetupInstallments();
         }
     }
 
     $('input[name="payment_type"]').on('change', toggleSetupPaymentFields);
-    $('#setupInstallmentCount, #setupInstallmentFrequency, #setupFirstDueDate').on('change', generateSetupInstallments);
+    $('#setupInstallmentFrequency').on('change', function() {
+        updateSetupInstallmentCountOptions();
+        generateSetupInstallments();
+    });
+    $('#setupInstallmentCount, #setupFirstDueDate').on('change', generateSetupInstallments);
     $(document).on('input', '.setup-inst-amount', updateSetupInstallmentTotal);
 
     $('#setupPaymentForm').on('submit', function(e) {

@@ -282,6 +282,14 @@ include BASE_PATH . '/component/breadcrumb.php';
                             <div id="installmentConfigBox" class="d-none border-top pt-3">
                                 <div class="row g-3 mb-3">
                                     <div class="col-md-3 col-sm-6">
+                                        <label class="form-label fs-12 fw-semibold">Frequency</label>
+                                        <select name="installment_frequency" id="installmentFrequency" class="form-select form-select-sm">
+                                            <option value="monthly" selected>Monthly (Max 12)</option>
+                                            <option value="quarterly">Quarterly (3 Months - Max 4)</option>
+                                            <option value="half_yearly">Half Yearly (6 Months - Max 2)</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-3 col-sm-6">
                                         <label class="form-label fs-12 fw-semibold">No. of Installments</label>
                                         <select name="installment_count" id="installmentCount" class="form-select form-select-sm">
                                             <option value="2">2 Installments</option>
@@ -290,14 +298,6 @@ include BASE_PATH . '/component/breadcrumb.php';
                                             <option value="5">5 Installments</option>
                                             <option value="6">6 Installments</option>
                                             <option value="12">12 Installments</option>
-                                        </select>
-                                    </div>
-                                    <div class="col-md-3 col-sm-6">
-                                        <label class="form-label fs-12 fw-semibold">Frequency</label>
-                                        <select name="installment_frequency" id="installmentFrequency" class="form-select form-select-sm">
-                                            <option value="monthly" selected>Monthly</option>
-                                            <option value="quarterly">Quarterly (Every 3 Months)</option>
-                                            <option value="half_yearly">Half Yearly (Every 6 Months)</option>
                                         </select>
                                     </div>
                                     <div class="col-md-3 col-sm-6">
@@ -1428,7 +1428,59 @@ include BASE_PATH . '/include/footer.php';
             checkInstallmentTotals();
         });
 
-        $('#btnRegenerateSchedule, #installmentCount, #installmentFrequency, #firstDueDate').on('change click', function(e) {
+        function updateInstallmentCountOptions() {
+            let freq = $('#installmentFrequency').val();
+            let $countSelect = $('#installmentCount');
+            let currentVal = parseInt($countSelect.val()) || 2;
+            let options = [];
+
+            if (freq === 'half_yearly') {
+                // Plan is 1 year (12 months), with 6 months frequency, maximum 2 installments allowed
+                options = [
+                    { val: 2, label: '2 Installments' }
+                ];
+            } else if (freq === 'quarterly') {
+                // Plan is 1 year (12 months), with 3 months frequency, maximum 4 installments allowed
+                options = [
+                    { val: 2, label: '2 Installments' },
+                    { val: 3, label: '3 Installments' },
+                    { val: 4, label: '4 Installments' }
+                ];
+            } else {
+                // Monthly: up to 12 installments allowed
+                options = [
+                    { val: 2, label: '2 Installments' },
+                    { val: 3, label: '3 Installments' },
+                    { val: 4, label: '4 Installments' },
+                    { val: 5, label: '5 Installments' },
+                    { val: 6, label: '6 Installments' },
+                    { val: 12, label: '12 Installments' }
+                ];
+            }
+
+            let html = '';
+            let valExists = false;
+            options.forEach(function(opt) {
+                let selected = (opt.val === currentVal);
+                if (selected) valExists = true;
+                html += `<option value="${opt.val}" ${selected ? 'selected' : ''}>${opt.label}</option>`;
+            });
+
+            $countSelect.html(html);
+
+            // If currentVal is not in the allowed list, default to max allowed for that frequency
+            if (!valExists) {
+                let defaultVal = options[options.length - 1].val;
+                $countSelect.val(defaultVal);
+            }
+        }
+
+        $('#installmentFrequency').on('change', function() {
+            updateInstallmentCountOptions();
+            generateInstallmentSchedule();
+        });
+
+        $('#btnRegenerateSchedule, #installmentCount, #firstDueDate').on('change click', function(e) {
             if (e.type === 'click' && $(this).attr('id') !== 'btnRegenerateSchedule') return;
             generateInstallmentSchedule();
         });

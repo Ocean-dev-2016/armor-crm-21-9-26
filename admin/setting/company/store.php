@@ -119,6 +119,29 @@ if ($plan_id === '') {
     exit;
 }
 
+// Validation for installment frequency & count limits (1 year validity)
+if ($id <= 0 && isset($_POST['payment_type']) && $_POST['payment_type'] === 'installment') {
+    $postedFreq = trim($_POST['installment_frequency'] ?? 'monthly');
+    $postedInsts = $_POST['installments'] ?? [];
+    $instCount = is_array($postedInsts) ? count($postedInsts) : 0;
+
+    if ($postedFreq === 'half_yearly' && $instCount > 2) {
+        $response['message'] = 'For Half Yearly frequency, a maximum of 2 installments is allowed (1-year plan).';
+        echo json_encode($response);
+        exit;
+    }
+    if ($postedFreq === 'quarterly' && $instCount > 4) {
+        $response['message'] = 'For Quarterly (3 months) frequency, a maximum of 4 installments is allowed (1-year plan).';
+        echo json_encode($response);
+        exit;
+    }
+    if ($postedFreq === 'monthly' && $instCount > 12) {
+        $response['message'] = 'For Monthly frequency, a maximum of 12 installments is allowed (1-year plan).';
+        echo json_encode($response);
+        exit;
+    }
+}
+
 // Format validation for Pan Card (10 alphanumeric characters: 5 letters, 4 digits, 1 letter)
 if ($pan_card !== '' && !preg_match('/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/', $pan_card)) {
     $response['message'] = 'Please enter a valid PAN Card number (e.g. ABCDE1234F).';
